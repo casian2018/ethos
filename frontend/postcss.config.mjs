@@ -1,6 +1,10 @@
+import aspectRatio from "@tailwindcss/aspect-ratio";
+
 const config = {
   plugins: {
-    "@tailwindcss/postcss": {},
+    "@tailwindcss/postcss": {
+      plugins: [aspectRatio],
+    },
   },
 };
 
