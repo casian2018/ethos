@@ -8,7 +8,6 @@ import {
   RemoteTrackPublication,
   Room,
   RoomEvent,
-  DataReceivedCallback,
   LocalVideoTrack,
   LocalAudioTrack,
   VideoPresets,
@@ -27,7 +26,6 @@ export const useCompanion = (serverUrl: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [localVideoTrack, setLocalVideoTrack] = useState<LocalVideoTrack | undefined>();
   const [localAudioTrack, setLocalAudioTrack] = useState<LocalAudioTrack | undefined>();
   const [detections, setDetections] = useState<BoundingBox[]>([]);
@@ -35,7 +33,6 @@ export const useCompanion = (serverUrl: string) => {
   const [error, setError] = useState<string | undefined>();
   
   const lastPingTime = useRef<number>(0);
-  const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
   // Fetch token from /api/connection
   const fetchToken = useCallback(async (): Promise<string | null> => {
@@ -45,10 +42,12 @@ export const useCompanion = (serverUrl: string) => {
       const response = await fetch(`/api/connection?room=${roomName}&username=${username}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch token');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch token: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('Token fetched successfully');
       return data.token;
     } catch (err) {
       console.error('Error fetching token:', err);
@@ -62,8 +61,7 @@ export const useCompanion = (serverUrl: string) => {
     try {
       // Create local video track
       const videoTrack = await createLocalVideoTrack({
-        width: VideoPresets.h720.width,
-        height: VideoPresets.h720.height,
+        resolution: VideoPresets.h720,
         facingMode: 'user',
       });
       setLocalVideoTrack(videoTrack);
@@ -107,7 +105,7 @@ export const useCompanion = (serverUrl: string) => {
       });
 
       // Set up data channel listener for detections
-      room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant) => {
+      room.on(RoomEvent.DataReceived, (payload: Uint8Array) => {
         try {
           const decoder = new TextDecoder();
           const message = decoder.decode(payload);
@@ -133,9 +131,7 @@ export const useCompanion = (serverUrl: string) => {
       });
 
       // Connect to the room
-      await room.connect(serverUrl, token, {
-        tracks: [tracks.videoTrack, tracks.audioTrack],
-      });
+      await room.connect(serverUrl, token);
 
       setRoom(room);
       setIsConnected(true);
@@ -146,7 +142,11 @@ export const useCompanion = (serverUrl: string) => {
 
       // Set up participant listeners
       const localParticipant = room.localParticipant;
-      const remoteParticipants = Array.from(room.participants.values());
+      // Get remote participants - using any type to avoid API issues
+      const remoteParticipants: any[] = [];
+      if (room.remoteParticipants) {
+        room.remoteParticipants.forEach((p: any) => remoteParticipants.push(p));
+      }
       setParticipants([localParticipant, ...remoteParticipants]);
 
       // Start latency ping
@@ -193,7 +193,6 @@ export const useCompanion = (serverUrl: string) => {
 
   // Set video element for local track
   const setVideoElement = useCallback((element: HTMLVideoElement | null) => {
-    videoElementRef.current = element;
     if (localVideoTrack && element) {
       localVideoTrack.attach(element);
     }
@@ -209,7 +208,6 @@ export const useCompanion = (serverUrl: string) => {
     isConnected,
     isConnecting,
     participants,
-    audioTracks,
     localVideoTrack,
     localAudioTrack,
     detections,

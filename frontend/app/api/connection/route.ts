@@ -15,14 +15,26 @@ export async function GET(req: NextRequest) {
   const apiSecret = process.env.LIVEKIT_API_SECRET || 'secret';
   const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
+  console.log('API Key exists:', !!apiKey);
+  console.log('API Secret exists:', !!apiSecret);
+  console.log('WS URL exists:', !!wsUrl);
+
   if (!apiKey || !apiSecret || !wsUrl) {
     return NextResponse.json(
-      { error: 'Server misconfigured' },
+      { 
+        error: 'Server misconfigured', 
+        details: {
+          apiKey: !!apiKey,
+          apiSecret: !!apiSecret,
+          wsUrl: !!wsUrl
+        }
+      },
       { status: 500 }
     );
   }
 
-  const at = new AccessToken(apiKey, apiSecret, { identity: username });
+  try {
+    const at = new AccessToken(apiKey, apiSecret, { identity: username });
 
   at.addGrant({
     room,
@@ -33,5 +45,15 @@ export async function GET(req: NextRequest) {
     canUpdateOwnMetadata: true,
   });
 
-  return NextResponse.json({ token: at.toJwt() });
+    const token = at.toJwt();
+    console.log('Token generated successfully for:', wsUrl);
+    
+    return NextResponse.json({ token });
+  } catch (err) {
+    console.error('Error generating token:', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Failed to generate token' },
+      { status: 500 }
+    );
+  }
 }

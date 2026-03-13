@@ -7,7 +7,11 @@ import { FiActivity, FiZap, FiVideo } from 'react-icons/fi'
 import { useCompanion } from '@/hooks/useCompanion'
 
 const DEFAULT_PC_IP = process.env.NEXT_PUBLIC_PC_IP || '192.168.1.100'
-const LIVEKIT_WS_URL = `ws://${DEFAULT_PC_IP}:7880`
+const LIVEKIT_WS_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || (
+  DEFAULT_PC_IP.includes(':') 
+    ? `ws://${DEFAULT_PC_IP}` 
+    : `ws://${DEFAULT_PC_IP}:7880`
+)
 
 export default function CameraPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
