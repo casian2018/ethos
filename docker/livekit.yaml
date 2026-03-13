@@ -1,0 +1,7 @@
+port: 7880
+keys:
+    devkey: secret
+rtc:
+    port_range_number:
+        min: 50000
+        max: 50050
