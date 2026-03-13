@@ -1,29 +1,20 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import {
   AudioTrack,
-  LocalParticipant,
-  LocalTrack,
   Participant,
   RemoteParticipant,
   RemoteTrack,
+  RemoteTrackPublication,
   Room,
   RoomEvent,
 } from 'livekit-client';
-import {
-  audioTracks,
-  allParticipants,
-  connected,
-  active,
-  sortedParticipants,
-  room,
-} from '@livekit/components-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 export const useCompanion = (token: string, serverUrl: string) => {
-  const [room, setRoom] = useState<Room | undefined>();
+  const roomRef = useRef<Room | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
-
 
   useEffect(() => {
     const room = new Room({
@@ -31,14 +22,14 @@ export const useCompanion = (token: string, serverUrl: string) => {
       dynacast: true,
     });
 
-    setRoom(room);
+    roomRef.current = room;
 
     const connect = async () => {
       try {
         await room.connect(serverUrl, token);
         setIsConnected(true);
         const localParticipant = room.localParticipant;
-        const remoteParticipants = Array.from(room.participants.values());
+        const remoteParticipants = Array.from((room as unknown as { participants: Map<string, Participant> }).participants.values());
         setParticipants([localParticipant, ...remoteParticipants]);
 
       } catch (error) {
@@ -56,32 +47,30 @@ export const useCompanion = (token: string, serverUrl: string) => {
       setParticipants((prev) => prev.filter((p) => p.sid !== participant.sid));
     };
 
-    const onTrackSubscribed = (track: RemoteTrack, participant: RemoteParticipant) => {
+    const onTrackSubscribed = (track: RemoteTrack, _publication: RemoteTrackPublication, _participant: RemoteParticipant) => {
       if (track.kind === 'audio') {
         setAudioTracks((prev) => [...prev, track as AudioTrack]);
       }
     };
-    const onTrackUnsubscribed = (track: RemoteTrack, participant: RemoteParticipant) => {
+    const onTrackUnsubscribed = (track: RemoteTrack, _publication: RemoteTrackPublication, _participant: RemoteParticipant) => {
       if (track.kind === 'audio') {
         setAudioTracks((prev) => prev.filter((t) => t.sid !== track.sid));
       }
     };
-
 
     room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
     room.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
     room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
     room.on(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
 
-
     return () => {
       room.disconnect();
       room.off(RoomEvent.ParticipantConnected, onParticipantConnected);
       room.off(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
-      room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
-      room.on(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
+      room.off(RoomEvent.TrackSubscribed, onTrackSubscribed);
+      room.off(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
     };
   }, [token, serverUrl]);
 
-  return { room, isConnected, participants, audioTracks };
+  return { room: roomRef.current, isConnected, participants, audioTracks };
 };

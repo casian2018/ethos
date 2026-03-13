@@ -1,7 +1,13 @@
 port: 7880
+bind_addresses:
+  - 0.0.0.0
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  port_range_start: 49152
+  port_range_end: 49172
 keys:
     devkey: secret
-rtc:
-    port_range_number:
-        min: 50000
-        max: 50050
+logging:
+  level: info
+  pion_level: info
