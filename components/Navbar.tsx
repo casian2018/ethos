@@ -11,7 +11,12 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const pathname = usePathname();
-  const isLandingPage = pathname === "/";
+  const isDevPage = pathname.startsWith("/dev");
+
+  // Only show navbar on dev pages
+  if (!isDevPage) {
+    return null;
+  }
 
   const appNavItems = [
     { href: "/dev/main", label: "Dashboard", icon: "🏠" },
@@ -30,34 +35,6 @@ export default function Navbar({ user }: NavbarProps) {
     const auth = firebaseAuth!;
     await signOut(auth);
   };
-
-  // Minimal navbar for landing page
-  if (isLandingPage) {
-    return (
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-700/50">
-        <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
-          <Link href="/" className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            ETHOS
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/auth"
-              className="px-4 py-2 text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/dev/profile"
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </nav>
-    );
-  }
 
   // Full navbar for app pages
   return (
@@ -116,13 +93,13 @@ export default function Navbar({ user }: NavbarProps) {
         </div>
       </div>
 
-      {/* Mobile bottom navigation */}
-      <div className="md:hidden flex justify-around py-2 bg-white dark:bg-zinc-800 border-t border-zinc-200 dark:border-zinc-700">
-        {appNavItems.slice(0, 5).map((item) => (
+      {/* Mobile bottom navigation - all 9 items */}
+      <div className="md:hidden flex justify-around py-2 bg-white dark:bg-zinc-800 border-t border-zinc-200 dark:border-zinc-700 overflow-x-auto">
+        {appNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-col items-center text-xs py-1 ${
+            className={`flex flex-col items-center text-xs py-1 px-2 ${
               pathname === item.href
                 ? "text-emerald-600 dark:text-emerald-400"
                 : "text-zinc-500 dark:text-zinc-400"
