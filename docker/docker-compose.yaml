@@ -1,19 +1,17 @@
-version: '3.9'
-
 services:
   livekit:
     image: livekit/livekit-server:latest
     container_name: livekit-server
     restart: unless-stopped
     ports:
-      - "7880:7880"       # WebRTC
-      - "7881:7881"       # HTTP
-      - "49152-49172:49152-49172/udp" # UDP (narrower range for fewer conflicts)
-    volumes:
-      - ./livekit.yaml:/etc/livekit.yaml
+      - "7880:7880"
+      - "7881:7881"
+      - "49152-49172:49152-49172/udp"
     environment:
-      - LIVEKIT_KEYS=devkey:secret
-      - LIVEKIT_CONFIG=/etc/livekit.yaml
+      LIVEKIT_KEYS: "devkey: secret"
+      LIVEKIT_PORT: "7880"
+      LIVEKIT_RTC_TCP_PORT: "7881"
+      LIVEKIT_RTC_UDP_PORT: "7882"
 
   ai-agent:
     build:

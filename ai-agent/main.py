@@ -2,13 +2,19 @@ import asyncio
 import logging
 import json
 import os
-from livekit.agents import JobContext, Worker, datachannel
-from livekit.rtc import VideoFrame
-import numpy as np
-from ultralytics import YOLO
+from livekit import rtc
+from livekit.agents import AutoSubscribe, JobContext, JobProcess, WorkerOptions, llm, multimodal
+from livekit.plugins import google
 
-# Load the YOLO model
-model = YOLO('yolov8n.pt')  # Using a standard small model
+# Load YOLO model (will be loaded on first use)
+model = None
+
+def load_model():
+    global model
+    if model is None:
+        from ultralytics import YOLO
+        model = YOLO('yolov8n.pt')
+    return model
 
 # Define the sports equipment classes that YOLO can detect
 SPORTS_EQUIPMENT_CLASSES = [
@@ -16,27 +22,60 @@ SPORTS_EQUIPMENT_CLASSES = [
     'surfboard', 'tennis racket'
 ]
 
-async def main(ctx: JobContext):
+async def entry_point(ctx: JobContext):
     """
-    This is the main function for the AI agent.
+    This is the entry point for the AI agent.
     It is called when a new job is created.
     """
     logging.info("AI Agent for Object Detection starting...")
-    room = ctx.room
-    data_publisher = datachannel.DataPublisher(room)
+    
+    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_AND_VIDEO)
 
-    async def process_video_stream(video_stream):
-        """
-        Process the video stream, perform object detection, and send results.
-        """
-        async for frame_event in video_stream:
+    # Initialize Gemini multimodal agent
+    agent = multimodal.MultimodalAgent(
+        model=google.Multimodal(model="gemini-2.0-flash"),
+        ctx=ctx
+    )
+    
+    # Start the agent
+    agent.start()
+
+    @ctx.room.on("participant_connected")
+    async def on_participant_connected(participant: rtc.Participant):
+        logging.info(f"Participant connected: {participant.identity}")
+        
+        # Process video tracks
+        for track_publication in participant.track_publications.values():
+            if track_publication.track_kind == rtc.TrackKind.VIDEO:
+                video_track = track_publication.track
+                if video_track:
+                    asyncio.create_task(process_video_stream(ctx, video_track))
+
+    @ctx.room.on("track_subscribed")
+    async def on_track_subscribed(
+        participant: rtc.Participant,
+        track: rtc.Track,
+        publication: rtc.TrackPublication
+    ):
+        if isinstance(track, rtc.VideoTrack):
+            asyncio.create_task(process_video_stream(ctx, track))
+
+
+async def process_video_stream(ctx: JobContext, video_track: rtc.VideoTrack):
+    """
+    Process the video stream, perform object detection, and send results.
+    """
+    try:
+        model = load_model()
+        
+        async for frame_event in video_track:
             frame = frame_event.frame
+            
             # Convert the video frame to a NumPy array for YOLO processing
             buffer = frame.buffer
+            import numpy as np
             if not isinstance(buffer, np.ndarray):
-                # This might be a bit slow, but it's a reliable way to get a NumPy array
-                # from different buffer types.
-                buffer = VideoFrame.to_ndarray(frame)
+                buffer = rtc.VideoFrame.to_ndarray(frame)
 
             # Perform object detection
             results = model(buffer, stream=False)
@@ -64,44 +103,21 @@ async def main(ctx: JobContext):
                             "box": box.xywh[0].tolist()
                         })
 
-            # If any sports equipment is detected, send the data
+            # If any sports equipment is detected, log the data
             if detections:
-                await data_publisher.publish(json.dumps(detections))
-
-
-    @room.on("participant_connected")
-    async def on_participant_connected(participant):
-        """
-        Event handler for when a participant connects to the room.
-        """
-        logging.info(f"Participant connected: {participant.identity}")
-        try:
-            video_track_pub = await asyncio.wait_for(
-                participant.tracks.wait_for_track("video"), timeout=10.0
-            )
-            if video_track_pub and video_track_pub.track:
-                video_stream = video_track_pub.track
-                asyncio.create_task(process_video_stream(video_stream))
-        except asyncio.TimeoutError:
-            logging.warning(f"No video track from {participant.identity} after 10s.")
+                logging.info(f"Detections: {json.dumps(detections)}")
+                
+    except Exception as e:
+        logging.error(f"Error processing video stream: {e}")
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    async def job_request_cb(job_request: JobContext):
-        """
-        Callback function for when a new job request is received.
-        """
-        logging.info("Accepting job for object detection: %s", job_request)
-        await job_request.accept(main)
-
-    # Create and run the worker
-    worker = Worker(
-        request_callback=job_request_cb,
-        worker_type="ai-agent-yolo", # Different worker type to avoid conflicts
-        livekit_url=os.environ.get("LIVEKIT_URL", "ws://localhost:7880"),
-        api_key=os.environ.get("LIVEKIT_API_KEY", "devkey"),
-        api_secret=os.environ.get("LIVEKIT_API_SECRET", "secret"),
+    # Create and run the worker with new API
+    worker_options = WorkerOptions(
+        entry_point_fnc=entry_point,
     )
-    asyncio.run(worker.run())
+    
+    import livekit
+    livekit.run(worker_options)
