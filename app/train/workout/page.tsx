@@ -12,8 +12,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, addDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
+import { doc, getDoc, addDoc, collection, query, where, limit, getDocs, serverTimestamp } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 
 const auth = firebaseAuth!;
@@ -62,6 +63,7 @@ interface Workout {
 const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 export default function WorkoutGeneratorPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [step, setStep] = useState<Step>("type");
@@ -257,6 +259,44 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
       alert("Workout saved!");
     } catch (err) {
       console.error("Error saving workout:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startWorkout = async () => {
+    if (!user || !workout) return;
+    setSaving(true);
+
+    try {
+      // Create workout session
+      const sessionRef = await addDoc(collection(db, "workout_sessions"), {
+        userId: user.uid,
+        workoutName: `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)} Workout`,
+        workoutType: workout.type,
+        date: new Date().toISOString(),
+        startTime: serverTimestamp(),
+        status: "active",
+        source: "generated",
+      });
+
+      // Add exercises to session
+      for (const exercise of workout.exercises) {
+        const restSeconds = exercise.rest ? parseInt(exercise.rest.replace("sec", "")) : 60;
+        const exerciseData = {
+          exerciseName: exercise.name,
+          muscleGroup: exercise.muscleGroup || "",
+          targetSets: exercise.sets || 3,
+          targetReps: exercise.reps || "10",
+          restTime: isNaN(restSeconds) ? 60 : restSeconds,
+        };
+        await addDoc(collection(db, `workout_sessions/${sessionRef.id}/exercises`), exerciseData);
+      }
+
+      // Redirect to session
+      router.push(`/train/session/${sessionRef.id}`);
+    } catch (err) {
+      console.error("Error starting workout:", err);
     } finally {
       setSaving(false);
     }
@@ -488,8 +528,12 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
 
           {/* Action Buttons */}
           <div className="flex gap-4">
-            <button className="btn-primary flex-1 py-3">
-              Start Workout
+            <button 
+              onClick={startWorkout}
+              disabled={saving}
+              className="btn-primary flex-1 py-3"
+            >
+              {saving ? "Starting..." : "Start Workout"}
             </button>
             <button 
               onClick={saveWorkout}

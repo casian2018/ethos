@@ -13,47 +13,54 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
+import { calculateAge, calculateBMI } from "@/lib/types";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 
 interface UserProfileData {
-  // Step 1: Basic Body Data
-  age: string;
+  // Step 1: Birth Date (replaces age)
+  birthDate: string;
   gender: string;
   height: string;
   weight: string;
   
-  // Step 2: Fitness Experience
+  // Step 2: Medical Conditions
+  medicalConditions: string[];
+  
+  // Step 3: Fitness Experience
   experienceLevel: string;
   trainsRegularly: boolean;
   
-  // Step 3: Primary Goals
+  // Step 4: Preferred Sports
+  preferredSports: string[];
+  
+  // Step 5: Primary Goals
   goals: string[];
   priorityGoal: string;
   
-  // Step 4: Training Environment
+  // Step 6: Training Environment
   trainingEnvironment: string;
   homeEquipment: string[];
   
-  // Step 5: Available Training Time
+  // Step 7: Available Training Time
   daysPerWeek: number;
   workoutDuration: number;
   
-  // Step 6: Fitness Limitations
+  // Step 8: Fitness Limitations
   injuries: string[];
   
-  // Step 7: Physical Condition
+  // Step 9: Physical Condition
   activityLevel: string;
   
-  // Step 8: Lifestyle Factors
+  // Step 10: Lifestyle Factors
   sleepHours: number;
   stressLevel: string;
   dailySteps: number;
   
-  // Step 9: Motivation Style
+  // Step 11: Motivation Style
   motivationType: string;
   
   // Profile basics
@@ -61,7 +68,7 @@ interface UserProfileData {
   lookingForBuddy: boolean;
 }
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 11;
 
 export default function ProfileSetupPage() {
   const router = useRouter();
@@ -72,12 +79,14 @@ export default function ProfileSetupPage() {
   const [userId, setUserId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<UserProfileData>({
-    age: "",
+    birthDate: "",
     gender: "",
     height: "",
     weight: "",
+    medicalConditions: [],
     experienceLevel: "",
     trainsRegularly: false,
+    preferredSports: [],
     goals: [],
     priorityGoal: "",
     trainingEnvironment: "",
@@ -132,15 +141,17 @@ export default function ProfileSetupPage() {
 
   const canProceed = () => {
     switch (step) {
-      case 1: return formData.age && formData.gender && formData.height && formData.weight;
-      case 2: return formData.experienceLevel;
-      case 3: return formData.goals.length > 0 && formData.priorityGoal;
-      case 4: return formData.trainingEnvironment;
-      case 5: return formData.daysPerWeek && formData.workoutDuration;
-      case 6: return true; // Injuries are optional
-      case 7: return formData.activityLevel;
-      case 8: return formData.sleepHours && formData.stressLevel;
-      case 9: return formData.motivationType;
+      case 1: return formData.birthDate && formData.gender && formData.height && formData.weight;
+      case 2: return formData.medicalConditions.length > 0;
+      case 3: return formData.experienceLevel;
+      case 4: return formData.preferredSports.length > 0;
+      case 5: return formData.goals.length > 0 && formData.priorityGoal;
+      case 6: return formData.trainingEnvironment;
+      case 7: return formData.daysPerWeek && formData.workoutDuration;
+      case 8: return true; // Injuries are optional
+      case 9: return formData.activityLevel;
+      case 10: return formData.sleepHours && formData.stressLevel;
+      case 11: return formData.motivationType;
       default: return false;
     }
   };
@@ -150,16 +161,27 @@ export default function ProfileSetupPage() {
     setSaving(true);
     
     try {
+      // Calculate derived fields
+      const height = parseInt(formData.height);
+      const weight = parseInt(formData.weight);
+      const bmi = calculateBMI(height, weight);
+      const age = calculateAge(formData.birthDate);
+      
       await setDoc(doc(db, "users", userId), {
         ...formData,
-        age: parseInt(formData.age),
-        height: parseInt(formData.height),
-        weight: parseInt(formData.weight),
+        // Store birthDate as-is
+        birthDate: formData.birthDate,
+        // Also store calculated age for easier queries
+        age,
+        bmi,
+        height,
+        weight,
         daysPerWeek: parseInt(formData.daysPerWeek.toString()),
         workoutDuration: parseInt(formData.workoutDuration.toString()),
         sleepHours: parseInt(formData.sleepHours.toString()),
         dailySteps: parseInt(formData.dailySteps.toString()),
         createdAt: new Date(),
+        updatedAt: new Date(),
         onboardingComplete: true,
       }, { merge: true });
       
@@ -215,15 +237,18 @@ export default function ProfileSetupPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Age *
+                    Data Nașterii *
                   </label>
                   <input
-                    type="number"
-                    value={formData.age}
-                    onChange={(e) => updateField("age", e.target.value)}
+                    type="date"
+                    value={formData.birthDate}
+                    onChange={(e) => updateField("birthDate", e.target.value)}
                     className="input"
-                    placeholder="25"
+                    max={new Date().toISOString().split('T')[0]}
                   />
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Vârsta va fi calculată automat din data nașterii
+                  </p>
                 </div>
                 
                 <div>
@@ -282,8 +307,47 @@ export default function ProfileSetupPage() {
             </>
           )}
 
-          {/* STEP 2: Fitness Experience */}
+          {/* STEP 2: Medical Conditions */}
           {step === 2 && (
+            <>
+              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
+                Stare de Sănătate
+              </h1>
+              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
+                Afecțiunile medicale vor influența tipul de antrenamente recomandate.
+              </p>
+              
+              <div className="space-y-3">
+                {[
+                  { value: "none", label: "Niciuna", desc: "Nu am nicio afecțiune medicală", emoji: "✅" },
+                  { value: "obesity", label: "Obezitate", desc: "Indicele de masă corporală peste 30", emoji: "⚖️" },
+                  { value: "anorexia", label: "Anorexie", desc: "Tulburare de alimentație", emoji: "🍽️" },
+                  { value: "anemia", label: "Anemie", desc: "Nivel scăzut de fier în sânge", emoji: "🩸" },
+                ].map((condition) => (
+                  <button
+                    key={condition.value}
+                    onClick={() => updateField("medicalConditions", [condition.value])}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      formData.medicalConditions.includes(condition.value)
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{condition.emoji}</span>
+                      <div>
+                        <p className="font-semibold text-zinc-900 dark:text-white">{condition.label}</p>
+                        <p className="text-sm text-zinc-500">{condition.desc}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* STEP 3: Fitness Experience */}
+          {step === 3 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
                 What's your training experience?
@@ -395,8 +459,65 @@ export default function ProfileSetupPage() {
             </>
           )}
 
-          {/* STEP 4: Training Environment */}
+          {/* STEP 4: Preferred Sports */}
           {step === 4 && (
+            <>
+              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
+                Sporturi Preferate
+              </h1>
+              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
+                Selectează sporturile pe care le practici sau ai dori să le încerci.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { value: "gym", label: "Sala", emoji: "🏋️" },
+                  { value: "ping_pong", label: "Ping Pong", emoji: "🏓" },
+                  { value: "football", label: "Fotbal", emoji: "⚽" },
+                  { value: "tennis", label: "Tenis", emoji: "🎾" },
+                  { value: "swimming", label: "Înot", emoji: "🏊" },
+                  { value: "running", label: "Alergat", emoji: "🏃" },
+                  { value: "cycling", label: "Ciclism", emoji: "🚴" },
+                  { value: "basketball", label: "Baschet", emoji: "🏀" },
+                  { value: "volleyball", label: "Volei", emoji: "🏐" },
+                  { value: "yoga", label: "Yoga", emoji: "🧘" },
+                  { value: "dancing", label: "Dans", emoji: "💃" },
+                  { value: "martial_arts", label: "Arte Marțiale", emoji: "🥋" },
+                ].map((sport) => (
+                  <button
+                    key={sport.value}
+                    onClick={() => {
+                      const current = formData.preferredSports;
+                      if (current.includes(sport.value)) {
+                        updateField("preferredSports", current.filter(s => s !== sport.value));
+                      } else {
+                        updateField("preferredSports", [...current, sport.value]);
+                      }
+                    }}
+                    className={`p-4 rounded-xl border-2 text-center transition-all ${
+                      formData.preferredSports.includes(sport.value)
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
+                    }`}
+                  >
+                    <span className="text-2xl block mb-1">{sport.emoji}</span>
+                    <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      {sport.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              
+              {formData.preferredSports.length > 0 && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-4 text-center">
+                  {formData.preferredSports.length} selectate
+                </p>
+              )}
+            </>
+          )}
+
+          {/* STEP 5: Training Environment */}
+          {step === 5 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
                 Where do you train?
@@ -455,8 +576,8 @@ export default function ProfileSetupPage() {
             </>
           )}
 
-          {/* STEP 5: Available Training Time */}
-          {step === 5 && (
+          {/* STEP 6: Available Training Time */}
+          {step === 6 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
                 How much time can you commit?
@@ -515,8 +636,8 @@ export default function ProfileSetupPage() {
             </>
           )}
 
-          {/* STEP 6: Fitness Limitations */}
-          {step === 6 && (
+          {/* STEP 7: Fitness Limitations */}
+          {step === 7 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
                 Any injuries or limitations?
@@ -565,8 +686,8 @@ export default function ProfileSetupPage() {
             </>
           )}
 
-          {/* STEP 7: Physical Condition */}
-          {step === 7 && (
+          {/* STEP 8: Physical Condition */}
+          {step === 8 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
                 What's your current activity level?
@@ -604,8 +725,8 @@ export default function ProfileSetupPage() {
             </>
           )}
 
-          {/* STEP 8: Lifestyle Factors */}
-          {step === 8 && (
+          {/* STEP 9: Lifestyle Factors */}
+          {step === 9 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
                 A few more details
@@ -674,8 +795,8 @@ export default function ProfileSetupPage() {
             </>
           )}
 
-          {/* STEP 9: Motivation Style */}
-          {step === 9 && (
+          {/* STEP 10: Motivation Style */}
+          {step === 10 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
                 What motivates you?

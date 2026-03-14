@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
+import { AvailabilitySlot, sportTypeLabels } from "@/lib/types";
+import ScheduledWorkoutsSection from "@/components/ScheduledWorkoutsSection";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
@@ -448,6 +450,9 @@ export default function ProfilePage() {
               </label>
             </div>
           </div>
+
+          {/* Scheduled Workouts Section */}
+          <ScheduledWorkoutsSection userId={userId} />
 
           {/* Save/Cancel Buttons */}
           {isEditing && (
