@@ -38,7 +38,6 @@ export default function FindBuddyPage() {
         router.push("/auth");
         return;
       }
-      setCurrentUser(currentUser);
       
       // Load buddies
       try {

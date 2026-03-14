@@ -7,7 +7,7 @@ export default function MainPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.push("/profile");
+    router.push("/dev/profile");
   }, [router]);
 
   return null;

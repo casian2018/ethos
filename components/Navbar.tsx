@@ -11,8 +11,10 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const pathname = usePathname();
+  const isLandingPage = pathname === "/";
 
-  const navItems = [
+  const appNavItems = [
+    { href: "/dev/main", label: "Dashboard", icon: "🏠" },
     { href: "/dev/profile", label: "Profile", icon: "👤" },
     { href: "/dev/workout", label: "Workout", icon: "💪" },
     { href: "/dev/stats", label: "Stats", icon: "📊" },
@@ -29,25 +31,76 @@ export default function Navbar({ user }: NavbarProps) {
     await signOut(auth);
   };
 
+  // Minimal navbar for landing page
+  if (isLandingPage) {
+    return (
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-700/50">
+        <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
+          <Link href="/" className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            ETHOS
+          </Link>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/auth"
+              className="px-4 py-2 text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/dev/profile"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // Full navbar for app pages
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
       <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
-        <Link href="/" className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-          ETHOS
-        </Link>
+        <div className="flex items-center gap-8">
+          <Link href="/dev/main" className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+            ETHOS
+          </Link>
+          
+          {/* Desktop navigation */}
+          <div className="hidden md:flex items-center gap-1">
+            {appNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  pathname === item.href
+                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                    : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
 
         <div className="flex items-center gap-4">
           {user ? (
             <>
               <Link
                 href="/dev/profile"
-                className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-sm font-medium"
+                className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-sm font-semibold hover:ring-2 hover:ring-emerald-500 transition-all"
               >
                 {user.email?.charAt(0).toUpperCase() || "U"}
               </Link>
               <button
                 onClick={handleSignOut}
-                className="text-sm text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400"
+                className="hidden md:block px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
               >
                 Sign Out
               </button>
@@ -63,13 +116,13 @@ export default function Navbar({ user }: NavbarProps) {
         </div>
       </div>
 
-      {/* Bottom navigation for mobile */}
+      {/* Mobile bottom navigation */}
       <div className="md:hidden flex justify-around py-2 bg-white dark:bg-zinc-800 border-t border-zinc-200 dark:border-zinc-700">
-        {navItems.slice(0, 5).map((item) => (
+        {appNavItems.slice(0, 5).map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-col items-center text-xs ${
+            className={`flex flex-col items-center text-xs py-1 ${
               pathname === item.href
                 ? "text-emerald-600 dark:text-emerald-400"
                 : "text-zinc-500 dark:text-zinc-400"
