@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaWifi, FaVideoSlash, FaPowerOff, FaExpand, FaCompress, FaRunning, FaBolt, FaHeartbeat } from 'react-icons/fa'
-import { FiActivity, FiZap, FiVideo } from 'react-icons/fi'
+import { FaWifi, FaVideoSlash, FaPowerOff, FaExpand, FaCompress, FaRunning, FaBolt, FaHeartbeat, FaCamera } from 'react-icons/fa'
+import { FiActivity, FiZap, FiVideo, FiLoader } from 'react-icons/fi'
 import { useCompanion } from '@/hooks/useCompanion'
 
 const DEFAULT_PC_IP = process.env.NEXT_PUBLIC_PC_IP || '192.168.1.100'
@@ -18,10 +18,13 @@ export default function CameraPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showControls, setShowControls] = useState(true)
+  const [isEthosThinking, setIsEthosThinking] = useState(false)
   
   const {
     isConnected,
     isConnecting,
+    isCameraActive,
+    facingMode,
     detections,
     latency,
     error,
@@ -29,12 +32,21 @@ export default function CameraPage() {
     disconnect,
     setVideoElement,
     clearDetections,
+    startCamera,
+    toggleFacingMode,
   } = useCompanion(LIVEKIT_WS_URL)
+
+  // Instant-On: Start camera immediately on mount
+  useEffect(() => {
+    startCamera()
+  }, [startCamera])
 
   useEffect(() => {
     if (detections.length > 0) {
+      setIsEthosThinking(true)
       const timer = setTimeout(() => {
         clearDetections()
+        setIsEthosThinking(false)
       }, 2000)
       return () => clearTimeout(timer)
     }
@@ -128,6 +140,15 @@ export default function CameraPage() {
               
               <div className="flex items-center space-x-6">
                 <div className={`flex items-center space-x-2 px-4 py-2 rounded-full border ${getStatusClass()}`}>
+                  {isEthosThinking && (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="mr-2"
+                    >
+                      <FiLoader className="text-cyan-400" />
+                    </motion.div>
+                  )}
                   {isConnected ? (
                     <>
                       <FaWifi className="text-green-400" />
@@ -166,9 +187,24 @@ export default function CameraPage() {
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-cover"
-          style={{ transform: 'scaleX(-1)' }}
+          className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
         />
+
+        {/* HUD Elements */}
+        {isCameraActive && (
+          <div className="absolute inset-0 pointer-events-none">
+            {/* Scanning Laser */}
+            <div className="w-full h-1 bg-cyan-400/50 shadow-[0_0_15px_#00f5ff] animate-scan absolute left-0 z-30" />
+            
+            {/* Silhouette / Positioning Guide */}
+            {!isConnected && !isConnecting && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-30 z-20">
+                <p className="text-cyan-400 font-mono text-xl mb-4 tracking-widest neon-text">POSITION IN FRAME</p>
+                <div className="w-1/3 h-2/3 border-2 border-dashed border-cyan-400 rounded-[100px]" />
+              </div>
+            )}
+          </div>
+        )}
 
         <AnimatePresence>
           {detections.map((detection, index) => (
@@ -192,7 +228,7 @@ export default function CameraPage() {
           ))}
         </AnimatePresence>
 
-        {!isConnected && !isConnecting && (
+        {!isCameraActive && !isConnecting && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-10">
             <FaVideoSlash className="text-6xl text-gray-500 mb-4" />
             <p className="text-gray-400 text-lg mb-8">Camera is not active</p>
@@ -223,6 +259,16 @@ export default function CameraPage() {
             className="absolute bottom-0 left-0 right-0 z-50 p-6 bg-gradient-to-t from-black/80 to-transparent"
           >
             <div className="flex justify-center items-center space-x-6">
+              {/* Switch Camera Button */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleFacingMode}
+                className="w-12 h-12 rounded-full bg-gray-800/50 border-2 border-gray-600 hover:border-cyan-400 flex items-center justify-center"
+              >
+                <FaCamera className="text-white" />
+              </motion.button>
+
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}

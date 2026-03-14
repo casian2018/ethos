@@ -1,10 +1,20 @@
 "use client";
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { FaEye, FaRunning, FaShieldAlt, FaWaveSquare, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa';
-import { FiCpu, FiZap, FiVolume2 } from 'react-icons/fi';
+import { FiCpu, FiZap, FiVolume2, FiLoader } from 'react-icons/fi';
 
 export default function EthosPage() {
+  const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleStart = () => {
+    setIsNavigating(true);
+    router.push('/camera');
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -42,8 +52,18 @@ export default function EthosPage() {
             <a href="#use-cases" className="text-gray-600 hover:text-blue-600 transition-colors">Use Cases</a>
             <a href="#dashboard" className="text-gray-600 hover:text-blue-600 transition-colors">Dashboard</a>
           </div>
-          <button className="hidden md:block bg-blue-600 text-white font-bold py-3 px-8 rounded-full hover:bg-blue-700 transition-transform duration-300 ease-in-out transform hover:scale-105">
-            Get Started
+          <button 
+            onClick={handleStart}
+            disabled={isNavigating}
+            className="hidden md:flex items-center justify-center bg-blue-600 text-white font-bold py-3 px-8 rounded-full hover:bg-blue-700 transition-transform duration-300 ease-in-out transform hover:scale-105 disabled:opacity-70 disabled:scale-100 w-40"
+          >
+            {isNavigating ? (
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                <FiLoader className="text-xl" />
+              </motion.div>
+            ) : (
+              "Get Started"
+            )}
           </button>
         </motion.div>
       </nav>
@@ -73,9 +93,20 @@ export default function EthosPage() {
               variants={itemVariants}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-blue-600 text-white font-bold py-4 px-10 rounded-full text-lg shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-colors"
+              onClick={handleStart}
+              disabled={isNavigating}
+              className="bg-blue-600 text-white font-bold py-4 px-10 rounded-full text-lg shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-colors mx-auto flex items-center justify-center space-x-3 disabled:opacity-70"
             >
-              Begin Your Transformation
+              {isNavigating ? (
+                <>
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                    <FiLoader className="text-xl" />
+                  </motion.div>
+                  <span>Booting Ethos...</span>
+                </>
+              ) : (
+                <span>Begin Your Transformation</span>
+              )}
             </motion.button>
           </motion.div>
         </div>

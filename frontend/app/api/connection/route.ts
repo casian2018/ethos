@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     canUpdateOwnMetadata: true,
   });
 
-    const token = at.toJwt();
+    const token = await at.toJwt();
     console.log('Token generated successfully for:', wsUrl);
     
     return NextResponse.json({ token });

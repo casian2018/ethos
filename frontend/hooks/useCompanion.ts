@@ -21,6 +21,8 @@ export const useCompanion = (serverUrl: string) => {
   const [room, setRoom] = useState<Room | undefined>();
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [localVideoTrack, setLocalVideoTrack] = useState<LocalVideoTrack | undefined>();
   const [localAudioTrack, setLocalAudioTrack] = useState<LocalAudioTrack | undefined>();
@@ -29,6 +31,8 @@ export const useCompanion = (serverUrl: string) => {
   const [error, setError] = useState<string | undefined>();
   
   const lastPingTime = useRef<number>(0);
+  const videoTrackRef = useRef<LocalVideoTrack | undefined>(undefined);
+  const facingModeRef = useRef<'user' | 'environment'>('user');
 
   // Fetch token from /api/connection
   const fetchToken = useCallback(async (): Promise<string | null> => {
@@ -37,14 +41,30 @@ export const useCompanion = (serverUrl: string) => {
       const username = `user-${Date.now()}`;
       const response = await fetch(`/api/connection?room=${roomName}&username=${username}`);
       
+      const text = await response.text();
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to fetch token: ${response.status}`);
+        let errorMsg = `Failed to fetch token: ${response.status}`;
+        try {
+          const errorData = JSON.parse(text);
+          errorMsg = errorData.error || errorMsg;
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
       
-      const data = await response.json();
-      console.log('Token fetched successfully');
-      return data.token;
+      try {
+        const data = JSON.parse(text);
+        if (typeof data === 'string') {
+          return data;
+        }
+        if (data && typeof data === 'object') {
+          return String(data.token || data.accessToken || text);
+        }
+      } catch (e) {
+        // Return raw text if not JSON
+      }
+      
+      return text;
     } catch (err) {
       console.error('Error fetching token:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch token');
@@ -52,15 +72,37 @@ export const useCompanion = (serverUrl: string) => {
     }
   }, []);
 
-  // Initialize local video and audio tracks
-  const initializeLocalTracks = useCallback(async () => {
+  // Start local camera only (Instant-On)
+  const startCamera = useCallback(async (mode: 'user' | 'environment' = facingMode) => {
     try {
+      if (localVideoTrack) {
+        localVideoTrack.stop();
+      }
+      
       // Create local video track
       const videoTrack = await createLocalVideoTrack({
         resolution: VideoPresets.h720,
-        facingMode: 'user',
+        facingMode: mode,
       });
       setLocalVideoTrack(videoTrack);
+      videoTrackRef.current = videoTrack;
+      setIsCameraActive(true);
+      setFacingMode(mode);
+      return videoTrack;
+    } catch (err) {
+      console.error('Error starting camera:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize camera');
+      return null;
+    }
+  }, [facingMode, localVideoTrack]);
+
+  // Initialize local video and audio tracks
+  const initializeLocalTracks = useCallback(async () => {
+    try {
+      let videoTrack = localVideoTrack;
+      if (!videoTrack) {
+        videoTrack = await startCamera() || undefined;
+      }
 
       // Create local audio track
       const audioTrack = await createLocalAudioTrack();
@@ -69,10 +111,10 @@ export const useCompanion = (serverUrl: string) => {
       return { videoTrack, audioTrack };
     } catch (err) {
       console.error('Error initializing local tracks:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize camera/microphone');
+      setError(err instanceof Error ? err.message : 'Failed to initialize microphone');
       return null;
     }
-  }, []);
+  }, [localVideoTrack, startCamera]);
 
   // Connect to LiveKit room
   const connect = useCallback(async () => {
@@ -131,10 +173,8 @@ export const useCompanion = (serverUrl: string) => {
 
       // Connect to the room
       console.log('Connecting to:', serverUrl);
-      console.log('Token type:', typeof token);
-      console.log('Token preview:', token.substring(0, 50) + '...');
-      
-      await room.connect(serverUrl, token);
+      const safeToken = String(token);
+      await room.connect(serverUrl, safeToken);
 
       setRoom(room);
       setIsConnected(true);
@@ -186,15 +226,17 @@ export const useCompanion = (serverUrl: string) => {
     }
     
     // Stop local tracks
-    if (localVideoTrack) {
-      localVideoTrack.stop();
+    if (videoTrackRef.current) {
+      videoTrackRef.current.stop();
+      videoTrackRef.current = undefined;
       setLocalVideoTrack(undefined);
+      setIsCameraActive(false);
     }
     if (localAudioTrack) {
       localAudioTrack.stop();
       setLocalAudioTrack(undefined);
     }
-  }, [room, localVideoTrack, localAudioTrack]);
+  }, [room, localAudioTrack]);
 
   // Set video element for local track
   const setVideoElement = useCallback((element: HTMLVideoElement | null) => {
@@ -208,10 +250,18 @@ export const useCompanion = (serverUrl: string) => {
     setDetections([]);
   }, []);
 
+  // Toggle facing mode
+  const toggleFacingMode = useCallback(() => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    startCamera(newMode);
+  }, [facingMode, startCamera]);
+
   return {
     room,
     isConnected,
     isConnecting,
+    isCameraActive,
+    facingMode,
     participants,
     localVideoTrack,
     localAudioTrack,
@@ -222,5 +272,7 @@ export const useCompanion = (serverUrl: string) => {
     disconnect,
     setVideoElement,
     clearDetections,
+    startCamera,
+    toggleFacingMode,
   };
 };
