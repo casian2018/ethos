@@ -65,6 +65,18 @@ const translations: Record<Language, Record<string, string>> = {
     "forum.noPosts": "No posts yet. Be the first to start a discussion!",
     "forum.viewAll": "View all",
     "forum.comment": "Comment",
+    "forum.comments": "comments",
+    "forum.comment.single": "comment",
+    "forum.recent": "Recent",
+    "forum.popular": "Popular",
+    "forum.backToForum": "Back to Forum",
+    "forum.addReply": "Add a reply",
+    "forum.replyTo": "Reply to comment",
+    "forum.writeReply": "Write your reply...",
+    "forum.postReply": "Post Reply",
+    "forum.noReplies": "No replies yet. Be the first to reply!",
+    "forum.replies": "Replies",
+    "forum.reply": "Reply",
     
     // Find Buddy
     "buddy.title": "Find a Gym Buddy",
@@ -211,6 +223,18 @@ const translations: Record<Language, Record<string, string>> = {
     "forum.noPosts": "Nu sunt postări. Fii primul care începe o discuție!",
     "forum.viewAll": "Vezi toate",
     "forum.comment": "Comentează",
+    "forum.comments": "comentarii",
+    "forum.comment.single": "comentariu",
+    "forum.recent": "Recente",
+    "forum.popular": "Populare",
+    "forum.backToForum": "Înapoi la Forum",
+    "forum.addReply": "Adaugă un răspuns",
+    "forum.replyTo": "Răspunde la comentariu",
+    "forum.writeReply": "Scrie răspunsul tău...",
+    "forum.postReply": "Publică răspuns",
+    "forum.noReplies": "Încă nu există comentarii. Fii primul care răspunde!",
+    "forum.replies": "Răspunsuri",
+    "forum.reply": "Răspunde",
     
     // Find Buddy
     "buddy.title": "Găsește un Partener de Sală",
@@ -312,35 +336,36 @@ const translations: Record<Language, Record<string, string>> = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("en");
-  const [theme, setThemeState] = useState<Theme>("light");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    // Load saved preferences
-    const savedLang = localStorage.getItem("ethos-language") as Language;
-    const savedTheme = localStorage.getItem("ethos-theme") as Theme;
-    
-    if (savedLang) setLanguageState(savedLang);
-    if (savedTheme) setThemeState(savedTheme);
-    else {
-      // Check system preference for theme
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setThemeState(prefersDark ? "dark" : "light");
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== "undefined") {
+      const savedLang = localStorage.getItem("ethos-language") as Language;
+      return savedLang || "en";
     }
-  }, []);
+    return "en";
+  });
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("ethos-theme") as Theme;
+      if (savedTheme) {
+        return savedTheme;
+      }
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return "light";
+  });
 
   useEffect(() => {
-    if (!mounted) return;
-    localStorage.setItem("ethos-language", language);
-  }, [language, mounted]);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ethos-language", language);
+    }
+  }, [language]);
 
   useEffect(() => {
-    if (!mounted) return;
-    localStorage.setItem("ethos-theme", theme);
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme, mounted]);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ethos-theme", theme);
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    }
+  }, [theme]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
-import { getFirestore, Firestore } from "firebase/firestore";
+import { getFirestore, Firestore, doc, getDoc } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -15,13 +16,30 @@ const firebaseConfig = {
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
+let storage: FirebaseStorage | undefined;
 
 if (typeof window !== "undefined") {
   if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
+    storage = getStorage(app);
   }
 }
 
-export { app, auth, db };
+// Helper function to get user display name by ID
+export async function getUserDisplayName(userId: string): Promise<string> {
+  if (!db) return userId.slice(0, 8);
+  try {
+    const userDoc = await getDoc(doc(db, "users", userId));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      return data.displayName || data.name || userId.slice(0, 8);
+    }
+    return userId.slice(0, 8);
+  } catch {
+    return userId.slice(0, 8);
+  }
+}
+
+export { app, auth, db, storage };
