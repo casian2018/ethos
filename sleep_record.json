@@ -1,0 +1,23 @@
+{
+  "date": {
+    "day": 14,
+    "month": 3,
+    "year": 2026
+  },
+  "sleepInterval": {
+    "asleep": "05:21",
+    "awake": "09:41"
+  },
+  "sleepStages": {
+    "deep": 0,
+    "light": 192,
+    "rem": 27,
+    "awake": 41
+  },
+  "quality": {
+    "score": 86,
+    "efficiency": 86,
+    "totalDuration": 260,
+    "timeInBed": 301
+  }
+}
