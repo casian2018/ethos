@@ -1,11 +1,7 @@
 'use client';
 
 import {
-  AudioTrack,
   Participant,
-  RemoteParticipant,
-  RemoteTrack,
-  RemoteTrackPublication,
   Room,
   RoomEvent,
   LocalVideoTrack,
@@ -14,7 +10,7 @@ import {
   createLocalVideoTrack,
   createLocalAudioTrack,
 } from 'livekit-client';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 export interface BoundingBox {
   label: string;
@@ -91,12 +87,15 @@ export const useCompanion = (serverUrl: string) => {
       if (!token) {
         throw new Error('Failed to obtain connection token');
       }
+      console.log('Got token, length:', token.length);
 
       // Initialize local tracks first
       const tracks = await initializeLocalTracks();
       if (!tracks) {
         throw new Error('Failed to initialize local tracks');
       }
+
+      console.log('Creating room and connecting to:', serverUrl);
 
       // Create room instance
       const room = new Room({
@@ -131,6 +130,10 @@ export const useCompanion = (serverUrl: string) => {
       });
 
       // Connect to the room
+      console.log('Connecting to:', serverUrl);
+      console.log('Token type:', typeof token);
+      console.log('Token preview:', token.substring(0, 50) + '...');
+      
       await room.connect(serverUrl, token);
 
       setRoom(room);
@@ -143,8 +146,10 @@ export const useCompanion = (serverUrl: string) => {
       // Set up participant listeners
       const localParticipant = room.localParticipant;
       // Get remote participants - using any type to avoid API issues
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const remoteParticipants: any[] = [];
       if (room.remoteParticipants) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         room.remoteParticipants.forEach((p: any) => remoteParticipants.push(p));
       }
       setParticipants([localParticipant, ...remoteParticipants]);

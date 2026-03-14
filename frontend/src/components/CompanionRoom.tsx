@@ -9,9 +9,9 @@ export const CompanionRoom = () => {
   const [sessionStarted, setSessionStarted] = useState(false);
   const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880';
   const roomName = 'voxlens-room';
-  const username = 'user-' + Date.now();
 
   const startSession = async () => {
+    const username = 'user-' + Date.now();
     try {
       const response = await fetch(`/api/connection?room=${roomName}&username=${username}`);
       const data = await response.json();

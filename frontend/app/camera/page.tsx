@@ -92,10 +92,6 @@ export default function CameraPage() {
       : 'bg-pink-500/20 border-pink-500'
   }
 
-  const getStatusTextClass = () => {
-    return isConnected ? 'text-green-400' : (error ? 'text-pink-500' : 'text-orange-500')
-  }
-
   const getButtonClass = () => {
     return isConnected 
       ? 'bg-pink-500/20 border-pink-500 hover:bg-pink-500/30' 
