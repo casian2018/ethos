@@ -328,8 +328,8 @@ export default function ExercisesPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <header className="mb-6">
-        <Link href="/train" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 mb-2 inline-flex items-center gap-1 text-sm font-medium">
-          ← Înapoi la Antrenamente
+        <Link href="/dev/main" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 mb-2 inline-flex items-center gap-1 text-sm font-medium">
+          ← Înapoi la Dashboard
         </Link>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           Baza de Date Exerciții
@@ -506,9 +506,6 @@ export default function ExercisesPage() {
                         <button
                           key={i}
                           className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center gap-2"
-                          onClick={() => {
-                            // Could implement video seek here
-                          }}
                         >
                           <span className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">
                             {Math.floor(ts.time / 60)}:{String(ts.time % 60).padStart(2, '0')}

@@ -21,6 +21,7 @@ export default function Navbar({ user }: NavbarProps) {
   const appNavItems = [
     { href: "/dev/main", label: "Dashboard", icon: "🏠" },
     { href: "/dev/profile", label: "Profile", icon: "👤" },
+    { href: "/dev/exercises", label: "Exercises", icon: "🏋️" },
     { href: "/train/workout", label: "Workout", icon: "💪" },
     { href: "/dev/stats", label: "Stats", icon: "📊" },
     { href: "/dev/forum", label: "Forum", icon: "💬" },
