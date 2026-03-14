@@ -85,11 +85,10 @@ export default function WorkoutGeneratorPage() {
         });
       }
 
-      // Fetch saved workouts
+      // Fetch saved workouts - query without orderBy to avoid index requirement
       const workoutsQuery = query(
         collection(db, "workouts"),
         where("userId", "==", user.uid),
-        orderBy("createdAt", "desc"),
         limit(10)
       );
       
@@ -217,11 +216,10 @@ Return ONLY valid JSON (no markdown formatting) with this exact structure:
 
       setSuccess("Workout saved successfully!");
       
-      // Refresh saved workouts
+      // Refresh saved workouts - query without orderBy to avoid index requirement
       const workoutsQuery = query(
         collection(db, "workouts"),
         where("userId", "==", userId),
-        orderBy("createdAt", "desc"),
         limit(10)
       );
       

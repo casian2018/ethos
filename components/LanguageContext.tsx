@@ -18,6 +18,9 @@ const translations: Record<Language, Record<string, string>> = {
   en: {
     // Navbar
     "nav.dashboard": "Dashboard",
+    "nav.train": "Train",
+    "nav.community": "Community",
+    "nav.progress": "Progress",
     "nav.forum": "Forum",
     "nav.findBuddy": "Find Buddy",
     "nav.workout": "Workout",
@@ -176,6 +179,9 @@ const translations: Record<Language, Record<string, string>> = {
   ro: {
     // Navbar
     "nav.dashboard": "Panou",
+    "nav.train": "Antrenament",
+    "nav.community": "Comunitate",
+    "nav.progress": "Progres",
     "nav.forum": "Forum",
     "nav.findBuddy": "Găsește Partener",
     "nav.workout": "Antrenament",

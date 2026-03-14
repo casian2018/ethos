@@ -40,11 +40,10 @@ export default function StatsDashboardPage() {
   const [userId, setUserId] = useState<string>("");
 
   async function loadStats(uid: string) {
-    // Load health stats
+    // Load health stats - query without orderBy to avoid index requirement
     const statsQuery = query(
       collection(db, "health_stats"),
       where("userId", "==", uid),
-      orderBy("createdAt", "desc"),
       limit(30)
     );
     

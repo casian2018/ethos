@@ -400,7 +400,7 @@ export default function ForumPage() {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <Link href={`/forum/${post.id}`}>
+                      <Link href={`/dev/forum/${post.id}`}>
                         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors line-clamp-2">
                           {post.title}
                         </h3>
@@ -422,7 +422,7 @@ export default function ForumPage() {
                           {formatDate(post.createdAt)}
                         </span>
                         <Link 
-                          href={`/forum/${post.id}`}
+                          href={`/dev/forum/${post.id}`}
                           className="flex items-center gap-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors ml-auto"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -8,7 +8,6 @@ import {
   query, 
   where, 
   getDocs,
-  orderBy,
   limit,
   addDoc
 } from "firebase/firestore";
@@ -44,10 +43,11 @@ export default function SleepAnalysisPage() {
       }
       
       try {
+        // Query without orderBy to avoid index requirement
+        // We'll sort on client side instead
         const sleepQuery = query(
           collection(db, "sleep_records"),
           where("userId", "==", currentUser.uid),
-          orderBy("date", "desc"),
           limit(30)
         );
         
@@ -56,6 +56,8 @@ export default function SleepAnalysisPage() {
         snapshot.forEach((doc) => {
           records.push({ id: doc.id, ...doc.data() } as SleepRecord);
         });
+        // Sort by date on client side
+        records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setSleepRecords(records);
       } catch (err) {
         console.error("Error loading sleep records:", err);
@@ -82,11 +84,10 @@ export default function SleepAnalysisPage() {
         createdAt: new Date()
       });
       
-      // Reload records
+      // Reload records - query without orderBy to avoid index requirement
       const sleepQuery = query(
         collection(db, "sleep_records"),
         where("userId", "==", currentUser.uid),
-        orderBy("date", "desc"),
         limit(30)
       );
       
@@ -95,6 +96,8 @@ export default function SleepAnalysisPage() {
       snapshot.forEach((doc) => {
         records.push({ id: doc.id, ...doc.data() } as SleepRecord);
       });
+      // Sort by date on client side
+      records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setSleepRecords(records);
       setShowForm(false);
       setNewRecord({ sleepHours: 7, sleepQuality: 3, notes: "" });

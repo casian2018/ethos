@@ -11,7 +11,7 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const pathname = usePathname();
-  const isDevPage = pathname.startsWith("/dev");
+  const isDevPage = pathname.startsWith("/dev") || pathname.startsWith("/train") || pathname.startsWith("/community") || pathname.startsWith("/progress") || pathname.startsWith("/profile");
 
   // Only show navbar on dev pages
   if (!isDevPage) {
@@ -21,7 +21,7 @@ export default function Navbar({ user }: NavbarProps) {
   const appNavItems = [
     { href: "/dev/main", label: "Dashboard", icon: "🏠" },
     { href: "/dev/profile", label: "Profile", icon: "👤" },
-    { href: "/dev/workout", label: "Workout", icon: "💪" },
+    { href: "/train/workout", label: "Workout", icon: "💪" },
     { href: "/dev/stats", label: "Stats", icon: "📊" },
     { href: "/dev/forum", label: "Forum", icon: "💬" },
     { href: "/dev/competition", label: "Competitions", icon: "🏆" },

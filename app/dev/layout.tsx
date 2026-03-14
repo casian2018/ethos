@@ -32,6 +32,7 @@ export default function DevLayout({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 transition-colors">
+        <Navbar user={user} />
         <main className="pt-16 pb-20 md:pb-0">
           {children}
         </main>

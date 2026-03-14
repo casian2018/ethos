@@ -29,7 +29,7 @@ export default function AuthPage() {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-      router.push("/profile");
+      router.push("/dev/main");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
@@ -44,7 +44,7 @@ export default function AuthPage() {
 
     try {
       await signInWithPopup(auth, googleProvider);
-      router.push("/profile");
+      router.push("/dev/profile");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);

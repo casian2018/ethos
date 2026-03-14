@@ -55,10 +55,10 @@ function HealthStatsContent() {
   }>>([]);
 
   async function loadSavedStats(uid: string) {
+    // Query without orderBy to avoid index requirement
     const statsQuery = query(
       collection(db, "health_stats"),
       where("userId", "==", uid),
-      orderBy("createdAt", "desc"),
       limit(10)
     );
     

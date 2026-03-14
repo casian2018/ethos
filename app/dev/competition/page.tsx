@@ -252,7 +252,7 @@ export default function CompetitionPage() {
                 </span>
               </div>
               <button
-                onClick={() => router.push(`/competition/${comp.id}`)}
+                onClick={() => router.push(`/dev/competition/${comp.id}`)}
                 className="mt-3 w-full py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
               >
                 {language === "ro" ? "Vezi Detalii" : "View Details"}
