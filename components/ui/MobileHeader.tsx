@@ -5,23 +5,30 @@ import { usePathname } from "next/navigation";
 import { Bell, Menu, Sparkles, User } from "lucide-react";
 import { useState } from "react";
 import { MobileMenu } from "./MobileMenu";
+import { ThemeToggle } from "./ThemeToggle";
 
-function getPageTitle(pathname: string): string {
-  if (pathname === "/dev/main") return "Dashboard";
-  if (pathname.startsWith("/dev/train")) return "Train";
-  if (pathname.startsWith("/dev/nutrition")) return "Nutrition";
-  if (pathname.startsWith("/dev/find_a_buddy")) return "Find Buddy";
-  if (pathname.startsWith("/dev/forum")) return "Forum";
-  if (pathname.startsWith("/dev/exercises")) return "Exercises";
-  if (pathname.startsWith("/dev/stats")) return "Stats";
-  if (pathname.startsWith("/dev/sleep-analysis")) return "Sleep";
-  if (pathname.startsWith("/dev/profile")) return "Profile";
-  return "Ethos";
+function getPageMeta(pathname: string): { title: string; emoji: string } {
+  if (pathname === "/dev/main") return { title: "Dashboard", emoji: "🏠" };
+  if (pathname.startsWith("/dev/train")) return { title: "Train", emoji: "💪" };
+  if (pathname.startsWith("/dev/nutrition")) return { title: "Nutrition", emoji: "🥗" };
+  if (pathname.startsWith("/dev/find_a_buddy")) return { title: "Find Buddy", emoji: "🤝" };
+  if (pathname.startsWith("/dev/forum")) return { title: "Forum", emoji: "💬" };
+  if (pathname.startsWith("/dev/exercises")) return { title: "Exercises", emoji: "🏋️" };
+  if (pathname.startsWith("/dev/evolution") || pathname.startsWith("/dev/stats")) {
+    return { title: "Evolution", emoji: "📈" };
+  }
+  if (pathname.startsWith("/dev/sleep-analysis")) return { title: "Sleep", emoji: "😴" };
+  if (pathname.startsWith("/dev/profile")) return { title: "Profile", emoji: "🧬" };
+  if (pathname.startsWith("/dev/events")) return { title: "Events", emoji: "📅" };
+  if (pathname.startsWith("/dev/competition")) return { title: "Competition", emoji: "🏆" };
+  if (pathname.startsWith("/dev/how_to")) return { title: "How To", emoji: "📘" };
+  return { title: "Ethos", emoji: "✨" };
 }
 
 export function MobileHeader() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pageMeta = getPageMeta(pathname);
 
   return (
     <>
@@ -41,12 +48,14 @@ export function MobileHeader() {
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Ethos</p>
                 <h1 className="ethos-display text-2xl font-semibold text-slate-900">
-                  {getPageTitle(pathname)}
+                  <span className="mr-2">{pageMeta.emoji}</span>
+                  {pageMeta.title}
                 </h1>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
+              <ThemeToggle compact />
               <button
                 type="button"
                 className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600"
@@ -67,7 +76,7 @@ export function MobileHeader() {
           <div className="mt-3 flex items-center gap-2 px-1 pb-1">
             <span className="ethos-kicker border-transparent bg-white/70">
               <Sparkles className="h-3.5 w-3.5" />
-              Distinct fitness OS
+              Friendly fitness OS 🌈
             </span>
           </div>
         </div>

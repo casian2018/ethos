@@ -6,27 +6,10 @@ import {
   normalizeNutritionAnalysis,
   type NutritionAnalysisSource,
 } from "@/lib/nutrition";
+import { generateGeminiContent, getGeminiApiKey, getGeminiModel } from "@/lib/server/gemini";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-
-function extractGeneratedText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") {
-    return "";
-  }
-
-  const data = payload as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          text?: string;
-        }>;
-      };
-    }>;
-  };
-
-  return data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "";
-}
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!GEMINI_API_KEY) {
+    if (!getGeminiApiKey()) {
       if (description) {
         return NextResponse.json({
           analysis: fallbackAnalyzeNutrition({ description, quantityText, language }),
@@ -106,21 +89,13 @@ export async function POST(request: NextRequest) {
         : "gemini-image"
       : "gemini-text";
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: "application/json",
-            responseJsonSchema: createNutritionAnalysisSchema(),
-          },
-        }),
-      }
-    );
+    const response = await generateGeminiContent({
+      model: getGeminiModel("gemini-2.5-flash"),
+      parts,
+      temperature: 0.2,
+      responseMimeType: "application/json",
+      responseJsonSchema: createNutritionAnalysisSchema(),
+    });
 
     if (!response.ok) {
       if (description) {
@@ -145,9 +120,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const geminiPayload = await response.json();
-    const generatedText = extractGeneratedText(geminiPayload);
-    if (!generatedText) {
+    if (!response.text) {
       if (description) {
         return NextResponse.json({
           analysis: fallbackAnalyzeNutrition({ description, quantityText, language }),
@@ -170,7 +143,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsed = JSON.parse(generatedText) as Record<string, unknown>;
+    const parsed = JSON.parse(response.text) as Record<string, unknown>;
     const analysis = normalizeNutritionAnalysis(parsed, {
       description,
       quantityText,

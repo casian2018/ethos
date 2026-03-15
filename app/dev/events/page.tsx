@@ -19,8 +19,6 @@ import {
   getDocs,
   addDoc,
   where,
-  orderBy,
-  limit,
   serverTimestamp
 } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
@@ -80,9 +78,7 @@ export default function SportEventsPage() {
       // Load upcoming events
       const eventsQuery = query(
         collection(db, "sport_events"),
-        where("status", "==", "open"),
-        orderBy("startTime", "asc"),
-        limit(50)
+        where("status", "==", "open")
       );
       
       const snapshot = await getDocs(eventsQuery);
@@ -98,8 +94,10 @@ export default function SportEventsPage() {
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
         } as SportEvent);
       });
+
+      eventsData.sort((left, right) => left.startTime.getTime() - right.startTime.getTime());
       
-      setEvents(eventsData);
+      setEvents(eventsData.slice(0, 50));
     } catch (err) {
       console.error("Error loading events:", err);
       // Demo data

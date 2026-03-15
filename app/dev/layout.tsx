@@ -63,7 +63,7 @@ export default function DevLayout({ children }: { children: React.ReactNode }) {
         <MobileHeader />
 
         <main className="relative px-4 pb-24 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pb-10 lg:pt-8">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-slate-400/20 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[rgb(var(--foreground)/0.18)] to-transparent" />
           <div className="mx-auto max-w-[1480px]">
             {children}
           </div>

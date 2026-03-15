@@ -123,14 +123,17 @@ export default function TrainPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">
-          {language === "ro" ? "Antrenamente" : "Train"}
+      <header className="ethos-panel mb-8 rounded-[32px] p-6">
+        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
+          {language === "ro" ? "Vibe de antrenament" : "Training vibe"}
+        </p>
+        <h1 className="mt-3 text-3xl font-bold text-slate-900">
+          💪 {language === "ro" ? "Antrenamente" : "Train"}
         </h1>
-        <p className="text-slate-500 mt-1">
+        <p className="text-slate-500 mt-2">
           {language === "ro" 
-            ? "Transformă-ți corpul cu antrenamente inteligente" 
-            : "Transform your body with smart workouts"}
+            ? "Transformă-ți corpul cu antrenamente inteligente, energie bună și flow clar." 
+            : "Transform your body with smart workouts, good energy, and a clearer flow."}
         </p>
       </header>
 

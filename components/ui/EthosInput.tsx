@@ -29,7 +29,7 @@ const EthosInput = React.forwardRef<HTMLInputElement, EthosInputProps>(
             // Variant styles
             variant === "default" && "border-input bg-background/85 backdrop-blur",
             variant === "filled" && "border-transparent bg-secondary/90",
-            variant === "outline" && "border-primary/40 bg-white/80",
+            variant === "outline" && "border-primary/40 bg-card/80",
             // Error state
             error && "border-destructive focus-visible:ring-destructive",
             // Icon offset

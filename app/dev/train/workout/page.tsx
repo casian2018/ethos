@@ -7,7 +7,6 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import {
-  buildWorkoutProfileContext,
   getProfileHeadline,
   profileNeedsOnboarding,
   type DetailedUserProfile,
@@ -15,7 +14,6 @@ import {
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 type WorkoutType = "gym" | "home" | "cardio" | "stretching" | null;
 type Intensity = "low" | "medium" | "high" | null;
@@ -164,81 +162,28 @@ export default function WorkoutGeneratorPage() {
     }
 
     setStep("generating");
-    const userContext = buildWorkoutProfileContext(profile);
-
-    const prompt = `
-You are a professional fitness coach. Build a single workout session.
-
-Detailed athlete context:
-${userContext}
-
-Session request:
-- Type: ${workoutType}
-- Intensity: ${intensity}
-- Duration: ${selectedDuration} minutes
-- Athlete name: ${getProfileHeadline(profile)}
-
-Rules:
-- Respect all injuries and medical conditions.
-- Use the available equipment and training environment.
-- Match the session to the priority goal: ${profile.priorityGoal}.
-- Adjust volume if sleep is low (${profile.sleepHours}h) or stress is high (${profile.stressLevel}).
-- Make the plan realistic for ${profile.daysPerWeek} sessions per week.
-
-Return ONLY valid JSON with this exact structure:
-{
-  "type": "${workoutType}",
-  "intensity": "${intensity}",
-  "duration": ${selectedDuration},
-  "exercises": [
-    {
-      "name": "exercise name",
-      "sets": 3,
-      "reps": "10",
-      "duration": null,
-      "rest": "60sec",
-      "muscleGroup": "string",
-      "tips": ["tip1", "tip2"],
-      "mistakes": ["mistake1", "mistake2"],
-      "workInterval": null,
-      "restInterval": null,
-      "holdTime": null,
-      "breathing": null
-    }
-  ]
-}
-    `.trim();
-
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.5,
-              maxOutputTokens: 3000,
-            },
-          }),
-        }
-      );
-
-      const data = await response.json();
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-
-      if (jsonMatch) {
-        setWorkout(JSON.parse(jsonMatch[0]) as Workout);
-      } else {
-        setWorkout({
-          type: workoutType,
+      const response = await fetch("/api/workout/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile,
+          workoutType,
           intensity,
           duration: selectedDuration,
-          exercises: getFallbackExercises(profile, workoutType),
-        });
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        workout?: Workout;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.workout) {
+        throw new Error(payload.error || "Failed to generate workout.");
       }
+
+      setWorkout(payload.workout);
     } catch (err) {
       console.error("Error generating workout:", err);
       setWorkout({

@@ -9,7 +9,6 @@ import {
   collection, 
   query, 
   where, 
-  limit, 
   getDocs,
   Timestamp 
 } from "firebase/firestore";
@@ -19,8 +18,6 @@ import { auth as firebaseAuth, db as firebaseDb, storage as firebaseStorage } fr
 const auth = firebaseAuth!;
 const db = firebaseDb!;
 const storage = firebaseStorage!;
-
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 interface HealthStats {
   steps: number;
@@ -54,11 +51,9 @@ function HealthStatsContent() {
   }>>([]);
 
   async function loadSavedStats(uid: string) {
-    // Query without orderBy to avoid index requirement
     const statsQuery = query(
       collection(db, "health_stats"),
-      where("userId", "==", uid),
-      limit(10)
+      where("userId", "==", uid)
     );
     
     const snapshot = await getDocs(statsQuery);
@@ -86,7 +81,13 @@ function HealthStatsContent() {
         createdAt: data.createdAt,
       });
     });
-    setSavedStats(stats);
+    stats.sort((left, right) => {
+      const leftTime = left.createdAt?.toMillis?.() ?? 0;
+      const rightTime = right.createdAt?.toMillis?.() ?? 0;
+      return rightTime - leftTime || right.date.localeCompare(left.date);
+    });
+
+    setSavedStats(stats.slice(0, 10));
   }
 
   useEffect(() => {
@@ -125,8 +126,8 @@ function HealthStatsContent() {
   }
 
   async function extractStatsFromImage() {
-    if (!selectedFile || !GEMINI_API_KEY) {
-      setError("Missing file or API key");
+    if (!selectedFile) {
+      setError("Missing file");
       return;
     }
 
@@ -141,49 +142,34 @@ function HealthStatsContent() {
         reader.readAsDataURL(selectedFile);
       });
 
-      const prompt = `Analyze this health/fitness app screenshot and extract the activity statistics shown. 
-Return ONLY valid JSON with this exact structure (no markdown):
-{
-  "steps": 10342,
-  "calories": 650,
-  "distance_km": 7.5,
-  "active_minutes": 85,
-  "source": "Apple Health" or "Samsung Health" or "Other"
-}
-
-If you cannot determine any stat, use 0 for numbers.`;
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inline_data: { mime_type: selectedFile.type, data: base64.split(",")[1] } }
-              ]
-            }],
-          }),
-        }
-      );
+      const response = await fetch("/api/stats/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: base64.split(",")[1],
+          imageMimeType: selectedFile.type,
+        }),
+      });
 
       if (!response.ok) throw new Error("Failed to analyze image");
 
-      const data = await response.json();
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!generatedText) throw new Error("Empty response from AI");
-
-      const cleanJson = generatedText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(cleanJson);
+      const data = (await response.json()) as {
+        stats?: {
+          steps?: number;
+          calories?: number;
+          distanceKm?: number;
+          activeMinutes?: number;
+          source?: string;
+        };
+      };
+      if (!data.stats) throw new Error("Empty response from AI");
       
       setExtractedStats({
-        steps: parsed.steps || 0,
-        calories: parsed.calories || 0,
-        distance: parsed.distance_km || parsed.distance || 0,
-        activeMinutes: parsed.active_minutes || parsed.activeMinutes || 0,
-        source: parsed.source
+        steps: data.stats.steps || 0,
+        calories: data.stats.calories || 0,
+        distance: data.stats.distanceKm || 0,
+        activeMinutes: data.stats.activeMinutes || 0,
+        source: data.stats.source
       });
     } catch (err) {
       console.error("Error extracting stats:", err);
@@ -219,7 +205,7 @@ If you cannot determine any stat, use 0 for numbers.`;
         createdAt: Timestamp.now(),
       });
 
-      setSuccess("Health stats saved successfully!");
+      setSuccess("Evolution entry saved successfully!");
       setExtractedStats(null);
       setSelectedFile(null);
       setPreviewUrl(null);
@@ -251,8 +237,8 @@ If you cannot determine any stat, use 0 for numbers.`;
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Import Health Stats</h1>
-          <p className="text-slate-500 mt-1">Upload a screenshot from Apple Health or Samsung Health</p>
+          <h1 className="text-3xl font-bold text-slate-900">Import Evolution Data</h1>
+          <p className="text-slate-500 mt-1">Upload a screenshot from Apple Health or Samsung Health to update your movement timeline</p>
         </div>
 
         {/* How-to-Sync Tutorial */}
@@ -369,7 +355,7 @@ If you cannot determine any stat, use 0 for numbers.`;
               {uploading ? (
                 <><svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Analyzing...</>
               ) : (
-                <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg> Extract Stats with AI</>
+                <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg> Extract Evolution with AI</>
               )}
             </button>
           )}
@@ -377,7 +363,7 @@ If you cannot determine any stat, use 0 for numbers.`;
 
         {extractedStats && (
           <div className="card p-6 mb-8 bg-white">
-            <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Extracted Stats Preview</h2>
+            <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Extracted Evolution Preview</h2>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 bg-emerald-50 bg-emerald-50 rounded-xl">
@@ -402,16 +388,16 @@ If you cannot determine any stat, use 0 for numbers.`;
               <button onClick={() => { setExtractedStats(null); setSelectedFile(null); setPreviewUrl(null); }} className="btn-secondary flex-1 bg-slate-50 text-slate-700">Cancel</button>
               <button onClick={saveStats} disabled={loading} className="btn-primary flex-1 flex items-center justify-center gap-2">
                 {loading ? <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> : <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></>}
-                Save Stats
+                Save Evolution Entry
               </button>
             </div>
           </div>
         )}
 
         <div>
-          <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Import History</h2>
+          <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Evolution Import History</h2>
           {savedStats.length === 0 ? (
-            <div className="card p-6 text-center bg-white"><p className="text-zinc-500 text-slate-500">No imported stats yet</p></div>
+            <div className="card p-6 text-center bg-white"><p className="text-zinc-500 text-slate-500">No evolution imports yet</p></div>
           ) : (
             <div className="space-y-3">
               {savedStats.map((stat) => (

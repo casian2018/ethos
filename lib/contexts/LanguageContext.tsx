@@ -1,9 +1,15 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  THEME_STORAGE_KEY,
+  applyThemeToTarget,
+  getNextTheme,
+  resolveInitialTheme,
+  type Theme,
+} from "@/lib/theme";
 
 type Language = "en" | "ro";
-type Theme = "light";
 
 interface LanguageContextType {
   language: Language;
@@ -70,18 +76,18 @@ const translations: Record<Language, Record<string, string>> = {
     "sleep.recovery": "Recovery Score",
 
     // Stats
-    "stats.title": "Activity Dashboard",
-    "stats.subtitle": "Track your fitness progress",
+    "stats.title": "Evolution",
+    "stats.subtitle": "Track how your activity changes over time",
     "stats.steps": "Steps",
     "stats.calories": "Calories",
     "stats.active": "Active",
     "stats.streak": "Streak",
     "stats.daysInRow": "days in a row",
     "stats.target": "Target",
-    "stats.weeklyActivity": "Weekly Activity",
-    "stats.weeklySteps": "weekly steps",
-    "stats.weeklyCalories": "weekly calories",
-    "stats.weeklyActiveMin": "weekly active min",
+    "stats.weeklyActivity": "7-Day Evolution",
+    "stats.weeklySteps": "steps / 7 days",
+    "stats.weeklyCalories": "calories / 7 days",
+    "stats.weeklyActiveMin": "active min / 7 days",
     "stats.achievements": "Achievements",
     "stats.adaptiveTarget": "Adaptive targets for your medical conditions. Daily steps:",
     
@@ -327,18 +333,18 @@ const translations: Record<Language, Record<string, string>> = {
     "sleep.recovery": "Scor Recuperare",
 
     // Stats (Romanian)
-    "stats.title": "Dashboard Activitate",
-    "stats.subtitle": "Urmărește-ți progresul fitness",
+    "stats.title": "Evoluție",
+    "stats.subtitle": "Vezi cum îți evoluează activitatea în timp",
     "stats.steps": "Pași",
     "stats.calories": "Calorii",
     "stats.active": "Activ",
     "stats.streak": "Streak",
     "stats.daysInRow": "zile consecutive",
     "stats.target": "Target",
-    "stats.weeklyActivity": "Activitate Săptămânală",
-    "stats.weeklySteps": "pași săpt.",
-    "stats.weeklyCalories": "calorii săpt.",
-    "stats.weeklyActiveMin": "min active săpt.",
+    "stats.weeklyActivity": "Evoluție 7 zile",
+    "stats.weeklySteps": "pași / 7 zile",
+    "stats.weeklyCalories": "calorii / 7 zile",
+    "stats.weeklyActiveMin": "minute active / 7 zile",
     "stats.achievements": "Realizări",
     "stats.adaptiveTarget": "Target-uri adaptate pentru condițiile tale medicale. Pași zilnici:",
     
@@ -543,12 +549,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   });
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      const savedTheme = localStorage.getItem("ethos-theme") as Theme;
-      if (savedTheme) {
-        return savedTheme;
-      }
-      return "light";
+      return resolveInitialTheme(
+        localStorage.getItem(THEME_STORAGE_KEY),
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      );
     }
+
     return "light";
   });
 
@@ -558,26 +564,23 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [language]);
 
-  // Force light mode only - remove dark mode functionality
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("ethos-theme", "light");
-      document.documentElement.classList.remove("dark");
-      document.documentElement.classList.add("light");
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+      applyThemeToTarget(theme, document.documentElement);
     }
-  }, []);
+  }, [theme]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
   };
 
-  // Theme is always light - no toggle functionality
   const setTheme = (newTheme: Theme) => {
-    setThemeState("light");
+    setThemeState(newTheme);
   };
 
   const toggleTheme = () => {
-    // No-op - dark mode disabled
+    setThemeState((currentTheme) => getNextTheme(currentTheme));
   };
 
   const t = (key: string): string => {

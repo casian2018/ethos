@@ -11,6 +11,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import ProfileDetailsWizard from "@/components/features/profile/ProfileDetailsWizard";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useLanguage } from "@/components/LanguageContext";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import {
@@ -156,13 +157,20 @@ export default function AuthPage() {
   return (
     <div className="ethos-shell-bg min-h-screen px-4 py-6 sm:px-6 sm:py-8">
       <div className={`mx-auto ${wideLayout ? "max-w-5xl" : "max-w-md"}`}>
+        <div className="mb-4 flex justify-end">
+          <ThemeToggle />
+        </div>
+
         <div className={`${wideLayout ? "grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
           <aside className="ethos-panel rounded-[36px] p-8">
-            <div className="ethos-kicker">{language === "ro" ? "Acces Ethos" : "Ethos Access"}</div>
+            <div className="ethos-kicker">
+              <span>🫶</span>
+              {language === "ro" ? "Acces Ethos" : "Ethos Access"}
+            </div>
             <h1 className="ethos-display mt-5 text-5xl font-semibold leading-none text-slate-900">
               {isLogin
-                ? (language === "ro" ? "Intră în cont" : "Sign in")
-                : (language === "ro" ? "Creează contul cu profil complet" : "Create an account with full profile")}
+                ? (language === "ro" ? "Intră în cont ✨" : "Sign in ✨")
+                : (language === "ro" ? "Creează contul cu profil complet 🌱" : "Create an account with full profile 🌱")}
             </h1>
             <p className="mt-5 text-sm leading-7 text-slate-600">
               {isLogin
@@ -179,9 +187,9 @@ export default function AuthPage() {
                 {language === "ro" ? "Ce se personalizează" : "What gets personalized"}
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                <li>Workout context: goals, injuries, equipment, sleep, stress.</li>
-                <li>Nutrition context: calories, macros, diet preference, allergies, hydration.</li>
-                <li>Profile context: identity, body metrics, lifestyle, motivation.</li>
+                <li>💪 Workout context: goals, injuries, equipment, sleep, stress.</li>
+                <li>🥗 Nutrition context: calories, macros, diet preference, allergies, hydration.</li>
+                <li>🧬 Profile context: identity, body metrics, lifestyle, motivation.</li>
               </ul>
             </div>
 

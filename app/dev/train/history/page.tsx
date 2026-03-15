@@ -13,17 +13,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { 
   collection, 
   query, 
   where, 
-  orderBy, 
-  limit,
   getDocs,
-  doc,
-  getDoc,
   Timestamp
 } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
@@ -44,8 +39,16 @@ interface WorkoutSession {
   totalVolume?: number;
 }
 
+function getSessionSortValue(session: WorkoutSession): number {
+  if (session.startTime?.toDate) {
+    return session.startTime.toDate().getTime();
+  }
+
+  const parsedDate = new Date(session.date);
+  return Number.isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime();
+}
+
 export default function WorkoutHistoryPage() {
-  const [_user, setUser] = useState<User | null>(null);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -57,12 +60,9 @@ export default function WorkoutHistoryPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-        // For demo, use mock user
-        setUser({ uid: "demo-user" } as User);
         setLoading(false);
         return;
       }
-      setUser(currentUser);
       loadHistory(currentUser.uid);
     });
     return () => unsubscribe();
@@ -74,9 +74,7 @@ export default function WorkoutHistoryPage() {
       const sessionsQuery = query(
         collection(db, "workout_sessions"),
         where("userId", "==", userId),
-        where("status", "==", "completed"),
-        orderBy("startTime", "desc"),
-        limit(20)
+        where("status", "==", "completed")
       );
 
       const snapshot = await getDocs(sessionsQuery);
@@ -85,11 +83,14 @@ export default function WorkoutHistoryPage() {
       snapshot.forEach((doc) => {
         sessionsData.push({ id: doc.id, ...doc.data() } as WorkoutSession);
       });
-      
-      setSessions(sessionsData);
+
+      sessionsData.sort((left, right) => getSessionSortValue(right) - getSessionSortValue(left));
+      const recentSessions = sessionsData.slice(0, 20);
+
+      setSessions(recentSessions);
 
       // Calculate stats
-      const totalVolume = sessionsData.reduce((acc, s) => acc + (s.totalVolume || 0), 0);
+      const totalVolume = recentSessions.reduce((acc, s) => acc + (s.totalVolume || 0), 0);
       
       // This week
       const now = new Date();
@@ -97,13 +98,13 @@ export default function WorkoutHistoryPage() {
       startOfWeek.setDate(now.getDate() - now.getDay());
       startOfWeek.setHours(0, 0, 0, 0);
       
-      const thisWeek = sessionsData.filter(s => {
+      const thisWeek = recentSessions.filter(s => {
         const sessionDate = new Date(s.date);
         return sessionDate >= startOfWeek;
       }).length;
 
       setStats({
-        totalWorkouts: sessionsData.length,
+        totalWorkouts: recentSessions.length,
         totalVolume,
         thisWeek,
       });
@@ -177,7 +178,7 @@ export default function WorkoutHistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white">
+      <div className="ethos-shell-bg flex min-h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
       </div>
     );
@@ -191,7 +192,7 @@ export default function WorkoutHistoryPage() {
           ← Back to Train
         </Link>
         <h1 className="text-2xl font-bold text-zinc-900 text-slate-900">
-          Workout History
+          📚 Workout History
         </h1>
       </header>
 

@@ -71,38 +71,81 @@ export function isTargetMet(actual: number, target: number): boolean {
   return actual >= target;
 }
 
+function getTodayDateKey(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function shiftDateKey(dateKey: string, offsetDays: number): string {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().split("T")[0];
+}
+
+function getRollingSevenDayPeaks(stats: Array<{
+  steps: number;
+  calories: number;
+  activeMinutes: number;
+  date: string;
+}>): {
+  steps: number;
+  calories: number;
+  activeMinutes: number;
+} {
+  if (stats.length === 0) {
+    return { steps: 0, calories: 0, activeMinutes: 0 };
+  }
+
+  const sorted = [...stats].sort((a, b) => a.date.localeCompare(b.date));
+  let bestSteps = 0;
+  let bestCalories = 0;
+  let bestActiveMinutes = 0;
+
+  sorted.forEach((entry) => {
+    const startDate = shiftDateKey(entry.date, -6);
+    const windowEntries = sorted.filter((candidate) => candidate.date >= startDate && candidate.date <= entry.date);
+
+    bestSteps = Math.max(bestSteps, windowEntries.reduce((sum, candidate) => sum + candidate.steps, 0));
+    bestCalories = Math.max(bestCalories, windowEntries.reduce((sum, candidate) => sum + candidate.calories, 0));
+    bestActiveMinutes = Math.max(
+      bestActiveMinutes,
+      windowEntries.reduce((sum, candidate) => sum + candidate.activeMinutes, 0)
+    );
+  });
+
+  return {
+    steps: bestSteps,
+    calories: bestCalories,
+    activeMinutes: bestActiveMinutes,
+  };
+}
+
 /**
  * Calculate streak from health stats
  */
 export function calculateStreak(stats: Array<{ date: string; steps: number; activeMinutes: number }>): number {
-  if (stats.length === 0) return 0;
-
-  const sortedByDate = [...stats].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  const activeDates = new Set(
+    stats
+      .filter((entry) => entry.date && (entry.steps > 0 || entry.activeMinutes > 0))
+      .map((entry) => entry.date)
   );
 
+  if (activeDates.size === 0) return 0;
+
+  const todayKey = getTodayDateKey();
+  let cursor = todayKey;
+
+  if (!activeDates.has(cursor)) {
+    cursor = shiftDateKey(todayKey, -1);
+  }
+
+  if (!activeDates.has(cursor)) {
+    return 0;
+  }
+
   let streak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let i = 0; i < sortedByDate.length; i++) {
-    const statDate = new Date(sortedByDate[i].date);
-    statDate.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.floor((today.getTime() - statDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    // Allow for today or yesterday to count
-    if (diffDays > 1) break;
-
-    // Check if user was active (steps > 0 or activeMinutes > 0)
-    if (sortedByDate[i].steps > 0 || sortedByDate[i].activeMinutes > 0) {
-      streak++;
-    } else if (diffDays === 0) {
-      // Today doesn't count as a break if no data yet
-      continue;
-    } else {
-      break;
-    }
+  while (activeDates.has(cursor)) {
+    streak += 1;
+    cursor = shiftDateKey(cursor, -1);
   }
 
   return streak;
@@ -159,23 +202,13 @@ export function checkAchievements(stats: Array<{
   if (stats.length === 0) return [];
 
   const unlocked: Achievement[] = [];
-  
-  // Sort by date
-  const sorted = [...stats].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  // Get totals
-  const totalSteps = sorted.reduce((sum, s) => sum + s.steps, 0);
-  const totalCalories = sorted.reduce((sum, s) => sum + s.calories, 0);
-  const totalActiveMinutes = sorted.reduce((sum, s) => sum + s.activeMinutes, 0);
-
-  // Today's stats
-  const today = sorted[0];
+  const maxSteps = stats.reduce((best, entry) => Math.max(best, entry.steps), 0);
+  const maxCalories = stats.reduce((best, entry) => Math.max(best, entry.calories), 0);
+  const maxActiveMinutes = stats.reduce((best, entry) => Math.max(best, entry.activeMinutes), 0);
   const streak = calculateStreak(stats);
+  const rollingPeaks = getRollingSevenDayPeaks(stats);
 
-  // Check each achievement
-  ACHIEVEMENTS.forEach(achievement => {
+  ACHIEVEMENTS.forEach((achievement) => {
     let isUnlocked = false;
 
     switch (achievement.id) {
@@ -192,25 +225,25 @@ export function checkAchievements(stats: Array<{
         isUnlocked = streak >= 30;
         break;
       case "steps_5k":
-        isUnlocked = today && today.steps >= 5000;
+        isUnlocked = maxSteps >= 5000;
         break;
       case "steps_10k":
-        isUnlocked = today && today.steps >= 10000;
+        isUnlocked = maxSteps >= 10000;
         break;
       case "steps_50k":
-        isUnlocked = totalSteps >= 50000;
+        isUnlocked = rollingPeaks.steps >= 50000;
         break;
       case "calories_1000":
-        isUnlocked = today && today.calories >= 1000;
+        isUnlocked = maxCalories >= 1000;
         break;
       case "calories_5000":
-        isUnlocked = totalCalories >= 5000;
+        isUnlocked = rollingPeaks.calories >= 5000;
         break;
       case "active_30":
-        isUnlocked = today && today.activeMinutes >= 30;
+        isUnlocked = maxActiveMinutes >= 30;
         break;
       case "active_150":
-        isUnlocked = totalActiveMinutes >= 150;
+        isUnlocked = rollingPeaks.activeMinutes >= 150;
         break;
     }
 

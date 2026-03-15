@@ -5,28 +5,11 @@ import {
   createNutritionMealPlanSchema,
   normalizeNutritionMealPlan,
 } from "@/lib/nutrition";
+import { generateGeminiContent, getGeminiApiKey, getGeminiModel } from "@/lib/server/gemini";
 import type { DetailedUserProfile, NutritionTargets } from "@/lib/profile";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-
-function extractGeneratedText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") {
-    return "";
-  }
-
-  const data = payload as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          text?: string;
-        }>;
-      };
-    }>;
-  };
-
-  return data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "";
-}
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,7 +30,7 @@ export async function POST(request: NextRequest) {
     const fallbackPlan = buildFallbackMealPlan(profile, targets, language);
     const mealCount = Math.min(Math.max(profile.mealsPerDay || 4, 3), 6);
 
-    if (!GEMINI_API_KEY) {
+    if (!getGeminiApiKey()) {
       return NextResponse.json({
         plan: fallbackPlan,
         usedFallback: true,
@@ -58,21 +41,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: buildMealPlanPrompt(profile, targets, language) }] }],
-          generationConfig: {
-            temperature: 0.4,
-            responseMimeType: "application/json",
-            responseJsonSchema: createNutritionMealPlanSchema(mealCount),
-          },
-        }),
-      }
-    );
+    const response = await generateGeminiContent({
+      model: getGeminiModel("gemini-2.5-flash"),
+      parts: [{ text: buildMealPlanPrompt(profile, targets, language) }],
+      temperature: 0.4,
+      responseMimeType: "application/json",
+      responseJsonSchema: createNutritionMealPlanSchema(mealCount),
+    });
 
     if (!response.ok) {
       return NextResponse.json({
@@ -85,10 +60,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const geminiPayload = await response.json();
-    const generatedText = extractGeneratedText(geminiPayload);
-
-    if (!generatedText) {
+    if (!response.text) {
       return NextResponse.json({
         plan: fallbackPlan,
         usedFallback: true,
@@ -99,7 +71,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const parsed = JSON.parse(generatedText) as Record<string, unknown>;
+    const parsed = JSON.parse(response.text) as Record<string, unknown>;
     const plan = normalizeNutritionMealPlan(parsed, fallbackPlan);
 
     return NextResponse.json({

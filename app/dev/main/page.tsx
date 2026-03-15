@@ -153,13 +153,18 @@ export default function MainPage() {
     try {
       const today = new Date().toISOString().split("T")[0];
       const healthSnapshot = await getDocs(
-        query(collection(db, "users", uid, "health_stats"), where("date", "==", today), limit(1))
+        query(collection(db, "health_stats"), where("userId", "==", uid), where("date", "==", today))
       );
       const sleepSnapshot = await getDocs(
         query(collection(db, "users", uid, "sleep_records"), where("date", "==", today), limit(1))
       );
 
-      const steps = healthSnapshot.empty ? 0 : ((healthSnapshot.docs[0]?.data() as HealthStat).steps || 0);
+      const steps = healthSnapshot.empty
+        ? 0
+        : healthSnapshot.docs.reduce((best, snapshot) => {
+            const currentSteps = (snapshot.data() as HealthStat).steps || 0;
+            return Math.max(best, currentSteps);
+          }, 0);
       const sleep = sleepSnapshot.empty ? 0 : ((sleepSnapshot.docs[0]?.data() as SleepRecord).sleepHours || 0);
 
       setTodayStats({ steps, sleep });

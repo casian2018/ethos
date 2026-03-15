@@ -311,19 +311,19 @@ export default function ForumPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="ethos-shell-bg flex min-h-screen items-center justify-center">
         <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="ethos-shell-bg min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="ethos-panel mb-6 flex items-center justify-between rounded-[32px] p-5 sm:p-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">{t("forum.title")}</h1>
+            <h1 className="text-3xl font-bold text-slate-900">💬 {t("forum.title")}</h1>
             <p className="text-slate-500 mt-1">
               {language === "ro" ? "Comunitatea Ethos - Antrenează-te, învață, crește" : "Ethos Community - Train, Learn, Grow"}
             </p>
@@ -335,7 +335,7 @@ export default function ForumPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span className="hidden sm:inline">{language === "ro" ? "Postare" : "Post"}</span>
+            <span className="hidden sm:inline">{language === "ro" ? "✍️ Postare" : "✍️ Post"}</span>
           </button>
         </div>
 

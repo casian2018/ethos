@@ -53,7 +53,7 @@ function SectionTitle({
   return (
     <div className="mb-6">
       <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
-      <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
     </div>
   );
 }
@@ -98,7 +98,7 @@ function OptionButton({
       className={`rounded-2xl border-2 px-4 py-3 text-left transition ${
         selected
           ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:-translate-y-0.5"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -282,7 +282,7 @@ export default function ProfileDetailsWizard({
 
       <div className="mb-8 rounded-3xl bg-slate-50 p-5">
         <h1 className="text-xl font-semibold text-slate-900">
-          {mode === "register" ? "Înregistrare cu onboarding complet" : "Profil detaliat Ethos"}
+          {mode === "register" ? "🌱 Înregistrare cu onboarding complet" : "🧬 Profil detaliat Ethos"}
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">{headline}</p>
         {email && (

@@ -48,7 +48,7 @@ export default function FindBuddyPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-emerald-50">
       <div className="mx-auto max-w-6xl px-4 py-10">
         <header className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Find a buddy</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">🤝 Find a buddy</p>
           <h1 className="mt-4 text-4xl font-bold text-slate-900">
             {language === "ro" ? "Găsește oameni reali pentru sportul tău" : "Find real people for your sport"}
           </h1>
@@ -57,6 +57,11 @@ export default function FindBuddyPage() {
               ? "Fluxul este gândit pentru două cazuri: cauți exact 1 om pentru un sport sau cauți mai mulți pentru o sesiune de grup. Sloturile create aici ajung apoi în feed-ul cu filtre și match score."
               : "The flow supports two cases: you either need exactly one person for a sport or several people for a group session. The slots created here then appear in the feed with filters and match score."}
           </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <span className="ethos-chip">📍 {language === "ro" ? "oraș + sport" : "city + sport"}</span>
+            <span className="ethos-chip">🕒 {language === "ro" ? "sloturi reale" : "real slots"}</span>
+            <span className="ethos-chip">✨ {language === "ro" ? "match score" : "match score"}</span>
+          </div>
         </header>
 
         {showCoachMark && (

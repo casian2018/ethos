@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import MobileMenu from "./MobileMenu";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 export default function Header() {
@@ -31,6 +32,7 @@ export default function Header() {
           <h1 className="text-lg font-semibold">{getPageTitle()}</h1>
         </div>
         <div className="flex items-center gap-x-4">
+          <ThemeToggle compact />
           <Link href="/dev/profile">
             <img
               className="h-8 w-8 rounded-full bg-gray-50"

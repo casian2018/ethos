@@ -1,665 +1,733 @@
-/**
- * Exercise Database Page
- * Baza de Date Exerciții - with search, filters, and modal details
- */
-
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Exercise, ExerciseCategory, DifficultyLevel } from "@/lib/types/exercise";
+import {
+  BadgeCheck,
+  BookOpen,
+  ChevronRight,
+  Dumbbell,
+  ExternalLink,
+  Filter,
+  PlayCircle,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  Target,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import { exercisesDatabase } from "@/lib/data/exercises";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
+import type {
+  DifficultyLevel,
+  Exercise,
+  ExerciseCategory,
+  MedicalWarning,
+  MuscleGroup,
+} from "@/lib/types/exercise";
 
-// Sample data - in production this would come from Firestore
-const sampleExercises: Exercise[] = [
-  {
-    id: "leg_001",
-    slug: "genuflexiuni-cu-haltera",
-    name: "Genuflexiuni cu haltera",
-    category: "Sala",
-    muscleGroup: "Cvadricepsi",
-    secondaryMuscles: ["Fese", "Ischiogambieri"],
-    equipment: ["Halteră", "Bancă"],
-    difficulty: "Intermediate",
-    instructions: [
-      "Stai în picioare cu haltera pe umeri",
-      "Păstrează picioarele la lățimea umerilor",
-      "Coboară încet până coapsele sunt paralele cu podeaua",
-      "Revino în poziția de start",
-      "Menține spatele drept pe tot parcursul mișcării"
-    ],
-    tips: [
-      "Inspiră în timp ce cobori",
-      "Ține pieptul ridicat",
-      "Nu lăsa genunchii să depășească vârful picioarelor",
-      "Privește înainte, nu în jos"
-    ],
-    mistakes: [
-      "Genunchii către interior",
-      "Călcâiele se ridică de pe podea",
-      "Spatele rotunjit",
-      "Mișcare prea rapidă"
-    ],
-    videoUrl: "https://www.youtube.com/watch?v=ultWZbUMPL8",
-    videoTimestamps: [
-      { time: 0, title: "Introducere", description: "Despre exercițiu" },
-      { time: 15, title: "Setup", description: "Poziția inițială" },
-      { time: 30, title: "Execuția", description: "Coborârea" },
-      { time: 45, title: "Revenire", description: "Urcarea" },
-      { time: 60, title: "Greșeli", description: "Ce să eviți" }
-    ],
-    tags: ["squat", "picioare", "fesieri", "compus", "hala", "genuflexiuni"],
-    language: "ro",
-    isVerified: true,
-    popularityScore: 95
-  },
-  {
-    id: "leg_002",
-    slug: "presa-pentru-picioare",
-    name: "Presă pentru picioare",
-    category: "Sala",
-    muscleGroup: "Cvadricepsi",
-    secondaryMuscles: ["Fese"],
-    equipment: ["Mașină dePresă"],
-    difficulty: "Beginner",
-    instructions: [
-      "Așază-te pe mașina de presă cu picioarele pe platformă",
-      "Păstrează picioarele la lățimea umerilor",
-      "Eliberează siguranțele",
-      "Coboară platforma încet până genunchii sunt la 90 grade",
-      "Împinge înapoi fără a bloca genunchii"
-    ],
-    tips: [
-      "Nu îndoi complet genunchii la partea inferioară",
-      "Ține partea inferioară a spatelui pe spate",
-      "Păstrează o ușoară curbură în partea inferioară a spatelui"
-    ],
-    mistakes: [
-      "Genunchii se apropie prea mult de piept",
-      "Mișcare rapidă fără control",
-      "Picioare prea înguste sau prea late"
-    ],
-    tags: ["presa", "picioare", "cvadricepsi", "masina", "sala"],
-    language: "ro",
-    isVerified: true,
-    popularityScore: 88
-  },
-  {
-    id: "leg_003",
-    slug: "fandari-in-picioare",
-    name: "Fandări înainte",
-    category: "Acasa",
-    muscleGroup: "Cvadricepsi",
-    secondaryMuscles: ["Fese", "Ischiogambieri"],
-    equipment: ["Greutate corporală"],
-    difficulty: "Beginner",
-    instructions: [
-      "Stai drept cu picioarele la lățimea umerilor",
-      "Pasul înainte cu un picior",
-      "Coboară până coapsa din față este paralelă cu podeaua",
-      "Revino în poziția de start",
-      "Alternază picioarele"
-    ],
-    tips: [
-      "Păstrează trunchiul drept",
-      "Genunchiul din față nu trebuie să depășească degetele",
-      "Fă pași mari pentru a implica mai mult fesierii"
-    ],
-    mistakes: [
-      "Genunchiul din față depășește degetele",
-      "Corpul se înclină înainte",
-      "Pasul prea mic"
-    ],
-    tags: ["fandari", "lunge", "picioare", "acasă", "greutate corporala"],
-    language: "ro",
-    isVerified: true,
-    popularityScore: 82
-  },
-  {
-    id: "leg_004",
-    slug: "step-up-pe-scaun",
-    name: "Step-up pe scaun",
-    category: "Acasa",
-    muscleGroup: "Cvadricepsi",
-    secondaryMuscles: ["Fese"],
-    equipment: ["Scaun"],
-    difficulty: "Beginner",
-    instructions: [
-      "Stai în fața unui scaun stabil",
-      "Păsește cu un picior pe scaun",
-      "Împinge pentru a ridica tot corpul",
-      "Coboară controlat",
-      "Alternază picioarele"
-    ],
-    tips: [
-      "Folosește o mână pentru echilibru",
-      "Păstrează trunchiul drept",
-      "Coboară cu control, nu sări"
-    ],
-    mistakes: [
-      "Scaun instabil",
-      "Mișcare prea rapidă",
-      "Greutate pe vârful piciorului"
-    ],
-    tags: ["step up", "picioare", "acasă", "cardio", "scaun"],
-    language: "ro",
-    isVerified: true,
-    popularityScore: 75
-  },
-  {
-    id: "leg_005",
-    slug: "ridicari-pe-varfuri",
-    name: "Ridicări pe vârful picioarelor",
-    category: "Sala",
-    muscleGroup: "Gambiere",
-    secondaryMuscles: [],
-    equipment: ["Halteră"],
-    difficulty: "Beginner",
-    instructions: [
-      "Stai drept cu haltera în mâini",
-      "Păstrează picioarele la lățimea umerilor",
-      "Ridică-te pe vârful picioarelor",
-      "Ține o secundă în partea de sus",
-      "Coboară încet"
-    ],
-    tips: [
-      "Mișcare lentă și controlată",
-      "Încordează gambierele în partea de sus",
-      "Poți sta pe o margine pentru amplitudine mai mare"
-    ],
-    mistakes: [
-      "Mișcare prea rapidă",
-      "Nu ridici suficient",
-      "Greutate prea mare"
-    ],
-    tags: ["calf raise", "gambiere", "picioare", "sala", "hala"],
-    language: "ro",
-    isVerified: true,
-    popularityScore: 70
-  },
-  {
-    id: "leg_006",
-    slug: "stretching-cvadriceps",
-    name: "Stretching Cvadriceps - În picioare",
-    category: "Stretching",
-    muscleGroup: "Cvadricepsi",
-    secondaryMuscles: [],
-    equipment: ["Niciunul"],
-    difficulty: "Beginner",
-    instructions: [
-      "Stai drept lângă un perete pentru echilibru",
-      "Îndoiește un genunchi și prinde glezna cu mâna",
-      "Trage căldura spre fese",
-      "Ține 20-30 secunde",
-      "Repetă cu celălalt picior"
-    ],
-    tips: [
-      "Nu te apleca înainte",
-      "Ține genunchii apropiați",
-      "Respiră adânc și relaxează-te în întindere"
-    ],
-    mistakes: [
-      "Genunchiul se depărtează",
-      "Spatele se apleacă",
-      "Forțează întinderea"
-    ],
-    tags: ["stretching", "cvadriceps", "intindere", "recuperare", "mobilitate"],
-    language: "ro",
-    isVerified: true,
-    popularityScore: 65
-  },
-  {
-    id: "leg_007",
-    slug: "stretching-femurali",
-    name: "Stretching pentru Femurali",
-    category: "Stretching",
-    muscleGroup: "Ischiogambieri",
-    secondaryMuscles: ["Fese"],
-    equipment: ["Niciunul"],
-    difficulty: "Beginner",
-    instructions: [
-      "Stai pe podea cu un picior întins",
-      "Îndoiește celălalt picior cu talpa pe podea",
-      "Înclină-te spre piciorul întins",
-      "Ține 20-30 secunde",
-      "Nu forța, simte întinderea"
-    ],
-    tips: [
-      "Ține spatele drept",
-      "Respiră adânc",
-      "Începe cu picioarele ușor îndoite"
-    ],
-    mistakes: [
-      "Spatele rotund",
-      "Forțarea mișcării",
-      "Genunchiul blocat complet"
-    ],
-    tags: ["stretching", "femurali", "hamstrings", "intindere", "mobilitate"],
-    language: "ro",
-    isVerified: true,
-    popularityScore: 68
-  },
-  {
-    id: "leg_008",
-    slug: "impins-pentru-gambe",
-    name: "Împins pentru Gambiere",
-    category: "Sala",
-    muscleGroup: "Gambiere",
-    secondaryMuscles: [],
-    equipment: ["Mașină dePresă"],
-    difficulty: "Intermediate",
-    instructions: [
-      "Așază-te pe mașina pentru gambiere",
-      "Pune vârful picioarelor pe platformă",
-      "Coboară greutatea prin extensia gleznelor",
-      "Încordează gambierele în partea de jos",
-      "Revino încet"
-    ],
-    tips: [
-      "Mișcare completă",
-      "Nu îndoi genunchii",
-      "Poți varya poziția picioarelor"
-    ],
-    mistakes: [
-      "Mișcare rapidă",
-      "Picioare nu sunt fixate",
-      "Greutate prea mare"
-    ],
-    tags: ["calf press", "gambiere", "picioare", "masina", "sala"],
-    language: "ro",
-    isVerified: true,
-    popularityScore: 60
+type CategoryFilter = "Toate" | ExerciseCategory;
+type DifficultyFilter = "Toate" | DifficultyLevel;
+type MuscleFilter = "Toate" | MuscleGroup;
+
+const categoryLabels: Record<ExerciseCategory, { ro: string; en: string }> = {
+  Sala: { ro: "Sală", en: "Gym" },
+  Acasa: { ro: "Acasă", en: "Home" },
+  Stretching: { ro: "Stretching", en: "Stretching" },
+};
+
+const difficultyLabels: Record<DifficultyLevel, { ro: string; en: string }> = {
+  Beginner: { ro: "Începător", en: "Beginner" },
+  Intermediate: { ro: "Intermediar", en: "Intermediate" },
+  Advanced: { ro: "Avansat", en: "Advanced" },
+};
+
+const muscleLabels: Partial<Record<MuscleGroup, { ro: string; en: string }>> = {
+  Piept: { ro: "Piept", en: "Chest" },
+  Spate: { ro: "Spate", en: "Back" },
+  Umeri: { ro: "Umeri", en: "Shoulders" },
+  Biceps: { ro: "Biceps", en: "Biceps" },
+  Triceps: { ro: "Triceps", en: "Triceps" },
+  Antebrat: { ro: "Antebraț", en: "Forearms" },
+  Abdomen: { ro: "Abdomen", en: "Abs" },
+  Fese: { ro: "Fese", en: "Glutes" },
+  Cvadricepsi: { ro: "Cvadricepsi", en: "Quadriceps" },
+  Ischiogambieri: { ro: "Ischiogambieri", en: "Hamstrings" },
+  Gambiere: { ro: "Gambiere", en: "Calves" },
+  Glezne: { ro: "Glezne", en: "Ankles" },
+  "Full Body": { ro: "Full body", en: "Full body" },
+  Cardio: { ro: "Cardio", en: "Cardio" },
+};
+
+const medicalWarningMeta: Record<MedicalWarning, { ro: string; en: string; color: string }> = {
+  spate: { ro: "Atenție la spate", en: "Back caution", color: "bg-amber-100 text-amber-700" },
+  genunchi: { ro: "Atenție la genunchi", en: "Knee caution", color: "bg-orange-100 text-orange-700" },
+  umăr: { ro: "Atenție la umăr", en: "Shoulder caution", color: "bg-rose-100 text-rose-700" },
+  "încheietură": { ro: "Atenție la încheietură", en: "Wrist caution", color: "bg-yellow-100 text-yellow-700" },
+  gât: { ro: "Atenție la gât", en: "Neck caution", color: "bg-pink-100 text-pink-700" },
+  cardio: { ro: "Atenție cardio", en: "Cardio caution", color: "bg-red-100 text-red-700" },
+};
+
+function toEmbedUrl(url: string | undefined): string {
+  if (!url) {
+    return "";
   }
-];
 
-// Category type for filters
-type CategoryFilter = 'Toate' | ExerciseCategory;
+  if (url.includes("embed/")) {
+    return url;
+  }
+
+  if (url.includes("youtu.be/")) {
+    const id = url.split("youtu.be/")[1]?.split(/[?&]/)[0];
+    return id ? `https://www.youtube.com/embed/${id}` : url;
+  }
+
+  if (url.includes("watch?v=")) {
+    return url.replace("watch?v=", "embed/");
+  }
+
+  if (url.includes("/shorts/")) {
+    const id = url.split("/shorts/")[1]?.split(/[?&]/)[0];
+    return id ? `https://www.youtube.com/embed/${id}` : url;
+  }
+
+  return url;
+}
+
+function formatDuration(duration: number | undefined): string {
+  if (!duration || duration <= 0) {
+    return "1-2 min";
+  }
+
+  const minutes = Math.floor(duration / 60);
+  const seconds = duration % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatTimestamp(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function getCategoryBadge(category: ExerciseCategory) {
+  if (category === "Sala") {
+    return "bg-emerald-100 text-emerald-700";
+  }
+
+  if (category === "Acasa") {
+    return "bg-sky-100 text-sky-700";
+  }
+
+  return "bg-violet-100 text-violet-700";
+}
+
+function getDifficultyBadge(difficulty: DifficultyLevel) {
+  if (difficulty === "Beginner") {
+    return "bg-emerald-100 text-emerald-700";
+  }
+
+  if (difficulty === "Intermediate") {
+    return "bg-amber-100 text-amber-700";
+  }
+
+  return "bg-rose-100 text-rose-700";
+}
 
 export default function HowToPage() {
   const { language } = useLanguage();
-  const t = (ro: string, en: string) => language === "ro" ? ro : en;
-  // State
+  const t = (ro: string, en: string) => (language === "ro" ? ro : en);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('Toate');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("Toate");
+  const [muscleFilter, setMuscleFilter] = useState<MuscleFilter>("Toate");
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("Toate");
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
-  
-  // Filtered exercises based on search and category
-  const filteredExercises = useMemo(() => {
-    return sampleExercises.filter(exercise => {
-      // Category filter
-      const matchesCategory = categoryFilter === 'Toate' || exercise.category === categoryFilter;
-      
-      // Search filter (name, muscleGroup, tags)
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = 
-        exercise.name.toLowerCase().includes(searchLower) ||
-        exercise.muscleGroup.toLowerCase().includes(searchLower) ||
-        exercise.tags.some(tag => tag.toLowerCase().includes(searchLower));
-      
-      return matchesCategory && matchesSearch;
+
+  const muscleOptions = useMemo(() => {
+    const muscles = new Set<MuscleGroup>();
+
+    exercisesDatabase.forEach((exercise) => {
+      muscles.add(exercise.muscleGroup);
+      exercise.secondaryMuscles?.forEach((muscle) => muscles.add(muscle));
     });
-  }, [searchQuery, categoryFilter]);
-  
-  // Get badge color based on category
-  const getCategoryBadge = (category: ExerciseCategory) => {
-    switch (category) {
-      case 'Sala':
-        return 'bg-emerald-100 text-emerald-700 bg-emerald-100 text-emerald-600';
-      case 'Acasa':
-        return 'bg-blue-100 text-blue-700 bg-blue-100 text-blue-600';
-      case 'Stretching':
-        return 'bg-purple-100 text-purple-700 bg-purple-100 text-purple-600';
-      default:
-        return 'bg-zinc-100 text-zinc-700';
-    }
-  };
-  
-  // Get difficulty color
-  const getDifficultyBadge = (difficulty: DifficultyLevel) => {
-    switch (difficulty) {
-      case 'Beginner':
-        return 'bg-green-100 text-green-700 bg-green-100 text-green-600';
-      case 'Intermediate':
-        return 'bg-yellow-100 text-yellow-700 bg-yellow-100 text-yellow-600';
-      case 'Advanced':
-        return 'bg-red-100 text-red-700 bg-red-100 text-red-600';
-      default:
-        return 'bg-zinc-100 text-zinc-700';
-    }
-  };
+
+    return Array.from(muscles).sort((a, b) => a.localeCompare(b));
+  }, []);
+
+  const featuredExercises = useMemo(() => {
+    return [...exercisesDatabase]
+      .filter((exercise) => exercise.videoUrl || exercise.gifUrl)
+      .sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0))
+      .slice(0, 4);
+  }, []);
+
+  const filteredExercises = useMemo(() => {
+    const searchLower = searchQuery.trim().toLowerCase();
+
+    return exercisesDatabase
+      .filter((exercise) => {
+        const matchesCategory = categoryFilter === "Toate" || exercise.category === categoryFilter;
+        const matchesMuscle =
+          muscleFilter === "Toate" ||
+          exercise.muscleGroup === muscleFilter ||
+          exercise.secondaryMuscles?.includes(muscleFilter);
+        const matchesDifficulty = difficultyFilter === "Toate" || exercise.difficulty === difficultyFilter;
+
+        const matchesSearch =
+          searchLower.length === 0 ||
+          exercise.name.toLowerCase().includes(searchLower) ||
+          exercise.muscleGroup.toLowerCase().includes(searchLower) ||
+          exercise.tags.some((tag) => tag.toLowerCase().includes(searchLower)) ||
+          exercise.equipment.some((equipment) => equipment.toLowerCase().includes(searchLower)) ||
+          exercise.synonyms?.some((synonym) => synonym.toLowerCase().includes(searchLower));
+
+        return matchesCategory && matchesMuscle && matchesDifficulty && matchesSearch;
+      })
+      .sort((a, b) => {
+        const popularityDelta = (b.popularityScore || 0) - (a.popularityScore || 0);
+        if (popularityDelta !== 0) {
+          return popularityDelta;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
+  }, [categoryFilter, difficultyFilter, muscleFilter, searchQuery]);
+
+  const counts = useMemo(() => {
+    return {
+      total: exercisesDatabase.length,
+      withVideo: exercisesDatabase.filter((exercise) => exercise.videoUrl || exercise.gifUrl).length,
+      verified: exercisesDatabase.filter((exercise) => exercise.isVerified).length,
+    };
+  }, []);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      <header className="mb-6">
-        <Link href="/train" className="text-emerald-600 hover:text-emerald-700 text-emerald-600 mb-2 inline-flex items-center gap-1 text-sm font-medium">
-          ← Înapoi la Antrenamente
+    <div className="mx-auto max-w-7xl px-4 py-6">
+      <header className="mb-8 rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/30 sm:p-8">
+        <Link
+          href="/dev/main"
+          className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-emerald-600 transition hover:text-emerald-700"
+        >
+          ← {t("Înapoi la Dashboard", "Back to Dashboard")}
         </Link>
-        <h1 className="text-2xl font-bold text-zinc-900 text-slate-900">
-          Baza de Date Exerciții
-        </h1>
-        <p className="text-zinc-600 text-slate-500 mt-1">
-          Găsește exercițiul perfect pentru antrenamentul tău
-        </p>
+
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              <BookOpen className="h-3.5 w-3.5" />
+              {t("How To complet", "Complete how-to")}
+            </div>
+            <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              {t("Bibliotecă de exerciții cu video, tips și execuție pas cu pas", "Exercise library with video, tips, and step-by-step execution")}
+            </h1>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
+              {t(
+                "Ai acum o bibliotecă mare de exerciții verificate, cu tutorial video, pași clari de execuție, greșeli frecvente, sfaturi practice și filtre rapide după grupă musculară, dificultate și categorie.",
+                "You now have a large verified exercise library with tutorial video, clear execution steps, common mistakes, practical cues, and fast filters by muscle group, difficulty, and category."
+              )}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-3xl bg-slate-900 p-5 text-white">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/60">{t("Exerciții", "Exercises")}</p>
+              <p className="mt-2 text-3xl font-bold">{counts.total}</p>
+            </div>
+            <div className="rounded-3xl bg-emerald-50 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-700">{t("Cu video", "With video")}</p>
+              <p className="mt-2 text-3xl font-bold text-emerald-900">{counts.withVideo}</p>
+            </div>
+            <div className="rounded-3xl bg-amber-50 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-700">{t("Verificate", "Verified")}</p>
+              <p className="mt-2 text-3xl font-bold text-amber-900">{counts.verified}</p>
+            </div>
+          </div>
+        </div>
       </header>
 
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </span>
+      <section className="mb-8">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">{t("Featured How-To", "Featured How-To")}</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {t("Cele mai utile exerciții cu demo video și explicații complete.", "Top exercises with video demos and complete guidance.")}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {featuredExercises.map((exercise) => (
+            <button
+              key={exercise.id}
+              onClick={() => setSelectedExercise(exercise)}
+              className="group rounded-[28px] border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-slate-200/40"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-800">
+                  <PlayCircle className="h-5 w-5" />
+                </div>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getCategoryBadge(exercise.category)}`}>
+                  {language === "ro" ? categoryLabels[exercise.category].ro : categoryLabels[exercise.category].en}
+                </span>
+              </div>
+
+              <h3 className="mt-4 text-lg font-semibold text-slate-900 group-hover:text-emerald-700">{exercise.name}</h3>
+              <p className="mt-2 text-sm text-slate-500">
+                {language === "ro"
+                  ? muscleLabels[exercise.muscleGroup]?.ro || exercise.muscleGroup
+                  : muscleLabels[exercise.muscleGroup]?.en || exercise.muscleGroup}
+              </p>
+
+              <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+                <span>{exercise.tips.length} {t("tips", "tips")}</span>
+                <span>{exercise.videoTimestamps?.length || 0} {t("momente", "chapters")}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">{t("Găsește exact ce ai nevoie", "Find exactly what you need")}</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {t("Caută după nume, echipament, tag-uri, grupă musculară sau nivel.", "Search by name, equipment, tags, muscle group, or level.")}
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-600">
+            <Filter className="h-4 w-4" />
+            {filteredExercises.length} {t("rezultate", "results")}
+          </div>
+        </div>
+
+        <div className="relative mb-4">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Caută exerciții... (nume, grupă musculară, tags)"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white bg-slate-50 border border-zinc-200 border-slate-200 rounded-xl text-zinc-900 text-slate-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={t("Caută exerciții, mușchi, echipament, tag-uri...", "Search exercises, muscles, equipment, tags...")}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-slate-900 outline-none focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
           />
         </div>
-      </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {(['Toate', 'Sala', 'Acasa', 'Stretching'] as CategoryFilter[]).map((category) => (
-          <button
-            key={category}
-            onClick={() => setCategoryFilter(category)}
-            className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
-              categoryFilter === category
-                ? 'bg-emerald-600 text-white'
-                : 'bg-zinc-100 bg-slate-50 text-zinc-600 text-slate-500 hover:bg-zinc-200 hover:bg-slate-200'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {/* Results count */}
-      <p className="text-sm text-zinc-500 text-slate-500 mb-4">
-        {filteredExercises.length} exerciții găsite
-      </p>
-
-      {/* Exercise Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredExercises.map((exercise) => (
-          <button
-            key={exercise.id}
-            onClick={() => setSelectedExercise(exercise)}
-            className="bg-white bg-slate-50 rounded-xl p-4 border border-zinc-200 border-slate-200 text-left hover:border-emerald-500 hover:border-emerald-500 hover:shadow-md transition-all group"
-          >
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="font-semibold text-zinc-900 text-slate-900 group-hover:text-emerald-600 group-hover:text-emerald-600">
-                {exercise.name}
-              </h3>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryBadge(exercise.category)}`}>
-                {exercise.category}
-              </span>
+        <div className="space-y-4">
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">{t("Categorie", "Category")}</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {(["Toate", "Sala", "Acasa", "Stretching"] as CategoryFilter[]).map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setCategoryFilter(category)}
+                  className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    categoryFilter === category
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {category === "Toate"
+                    ? t("Toate", "All")
+                    : language === "ro"
+                      ? categoryLabels[category].ro
+                      : categoryLabels[category].en}
+                </button>
+              ))}
             </div>
-            
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-zinc-500 text-slate-500">
-                {exercise.muscleGroup}
-              </span>
-              {exercise.secondaryMuscles && exercise.secondaryMuscles.length > 0 && (
-                <span className="text-xs text-zinc-400 text-slate-500">
-                  + {exercise.secondaryMuscles.join(', ')}
-                </span>
-              )}
-            </div>
-            
-            <div className="mt-3 flex items-center gap-2">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyBadge(exercise.difficulty)}`}>
-                {exercise.difficulty}
-              </span>
-              <div className="flex gap-1 flex-wrap">
-                {exercise.equipment.slice(0, 2).map((eq, i) => (
-                  <span key={i} className="text-xs text-zinc-400 text-slate-500 bg-zinc-100 bg-slate-100 px-2 py-0.5 rounded">
-                    {eq}
-                  </span>
-                ))}
-                {exercise.equipment.length > 2 && (
-                  <span className="text-xs text-zinc-400">+{exercise.equipment.length - 2}</span>
-                )}
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
+          </div>
 
-      {/* No results */}
-      {filteredExercises.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-zinc-500 text-slate-500">
-            Nu am găsit exerciții care să corespundă căutării tale.
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">{t("Grupă musculară", "Muscle group")}</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              <button
+                onClick={() => setMuscleFilter("Toate")}
+                className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition ${
+                  muscleFilter === "Toate" ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {t("Toate", "All")}
+              </button>
+              {muscleOptions.map((muscle) => (
+                <button
+                  key={muscle}
+                  onClick={() => setMuscleFilter(muscle)}
+                  className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    muscleFilter === muscle ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {language === "ro" ? muscleLabels[muscle]?.ro || muscle : muscleLabels[muscle]?.en || muscle}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">{t("Nivel", "Difficulty")}</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {(["Toate", "Beginner", "Intermediate", "Advanced"] as DifficultyFilter[]).map((difficulty) => (
+                <button
+                  key={difficulty}
+                  onClick={() => setDifficultyFilter(difficulty)}
+                  className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    difficultyFilter === difficulty
+                      ? "bg-violet-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {difficulty === "Toate"
+                    ? t("Toate", "All")
+                    : language === "ro"
+                      ? difficultyLabels[difficulty].ro
+                      : difficultyLabels[difficulty].en}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {filteredExercises.length === 0 ? (
+        <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-10 text-center">
+          <p className="text-lg font-semibold text-slate-900">{t("Nu am găsit exerciții potrivite", "No exercises matched")}</p>
+          <p className="mt-2 text-sm text-slate-500">
+            {t("Șterge filtrele sau încearcă alt termen de căutare.", "Clear filters or try a different search term.")}
           </p>
           <button
-            onClick={() => {setSearchQuery(''); setCategoryFilter('Toate');}}
-            className="mt-4 text-emerald-600 hover:text-emerald-700 text-emerald-600 font-medium"
+            onClick={() => {
+              setSearchQuery("");
+              setCategoryFilter("Toate");
+              setMuscleFilter("Toate");
+              setDifficultyFilter("Toate");
+            }}
+            className="mt-4 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Șterge filtrele
+            {t("Resetează filtrele", "Reset filters")}
           </button>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filteredExercises.map((exercise) => (
+            <button
+              key={exercise.id}
+              onClick={() => setSelectedExercise(exercise)}
+              className="group rounded-[28px] border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-slate-200/40"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-lg font-semibold text-slate-900 group-hover:text-emerald-700">
+                    {exercise.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {language === "ro"
+                      ? muscleLabels[exercise.muscleGroup]?.ro || exercise.muscleGroup
+                      : muscleLabels[exercise.muscleGroup]?.en || exercise.muscleGroup}
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getCategoryBadge(exercise.category)}`}>
+                  {language === "ro" ? categoryLabels[exercise.category].ro : categoryLabels[exercise.category].en}
+                </span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getDifficultyBadge(exercise.difficulty)}`}>
+                  {language === "ro" ? difficultyLabels[exercise.difficulty].ro : difficultyLabels[exercise.difficulty].en}
+                </span>
+                {exercise.isVerified ? (
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                    {t("Verificat", "Verified")}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-4 space-y-2 text-sm text-slate-600">
+                <p>
+                  <span className="font-medium text-slate-900">{t("Echipament:", "Equipment:")}</span>{" "}
+                  {exercise.equipment.join(", ")}
+                </p>
+                <p>
+                  <span className="font-medium text-slate-900">{t("Ai inclus:", "Includes:")}</span>{" "}
+                  {exercise.instructions.length} {t("pași", "steps")} • {exercise.tips.length} {t("tips", "tips")}
+                  {exercise.mistakes?.length ? ` • ${exercise.mistakes.length} ${t("greșeli", "mistakes")}` : ""}
+                </p>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(exercise.videoUrl || exercise.gifUrl) ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
+                    <PlayCircle className="h-3.5 w-3.5" />
+                    {t("Video inclus", "Video included")}
+                  </span>
+                ) : null}
+                {exercise.medicalWarnings?.slice(0, 2).map((warning) => (
+                  <span
+                    key={warning}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${medicalWarningMeta[warning].color}`}
+                  >
+                    <TriangleAlert className="h-3.5 w-3.5" />
+                    {language === "ro" ? medicalWarningMeta[warning].ro : medicalWarningMeta[warning].en}
+                  </span>
+                ))}
+              </div>
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Modal for Exercise Details */}
-      {selectedExercise && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setSelectedExercise(null)}>
-          <div 
-            className="bg-white bg-slate-50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+      {selectedExercise ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          onClick={() => setSelectedExercise(null)}
+        >
+          <div
+            className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[32px] border border-slate-200 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white bg-slate-50 p-4 border-b border-zinc-200 border-slate-200 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-zinc-900 text-slate-900">
-                  {selectedExercise.name}
-                </h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryBadge(selectedExercise.category)}`}>
-                    {selectedExercise.category}
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyBadge(selectedExercise.difficulty)}`}>
-                    {selectedExercise.difficulty}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedExercise(null)}
-                className="p-2 hover:bg-zinc-100 hover:bg-slate-200 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-4 space-y-6">
-              {/* Video Tutorial */}
-              {(selectedExercise.videoUrl || selectedExercise.gifUrl) && (
+            <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-5 backdrop-blur">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="font-medium text-zinc-900 text-slate-900 mb-3">
-                    🎬 Tutorial Video
-                  </h3>
-                  <div className="relative aspect-video bg-zinc-900 rounded-xl overflow-hidden">
-                    {selectedExercise.videoUrl ? (
-                      <iframe
-                        src={selectedExercise.videoUrl.replace('watch?v=', 'embed/')}
-                        title={selectedExercise.name}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    ) : selectedExercise.gifUrl ? (
-                      <img
-                        src={selectedExercise.gifUrl}
-                        alt={selectedExercise.name}
-                        className="w-full h-full object-cover"
-                      />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getCategoryBadge(selectedExercise.category)}`}>
+                      {language === "ro" ? categoryLabels[selectedExercise.category].ro : categoryLabels[selectedExercise.category].en}
+                    </span>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getDifficultyBadge(selectedExercise.difficulty)}`}>
+                      {language === "ro" ? difficultyLabels[selectedExercise.difficulty].ro : difficultyLabels[selectedExercise.difficulty].en}
+                    </span>
+                    {selectedExercise.isVerified ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                        <BadgeCheck className="h-3.5 w-3.5" />
+                        {t("Verificat", "Verified")}
+                      </span>
                     ) : null}
                   </div>
-                  
-                  {/* Video Timestamps */}
-                  {selectedExercise.videoTimestamps && selectedExercise.videoTimestamps.length > 0 && (
-                    <div className="mt-3 space-y-1">
-                      {selectedExercise.videoTimestamps.map((ts, i) => (
-                        <button
-                          key={i}
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 hover:bg-emerald-50 transition-colors flex items-center gap-2"
-                          onClick={() => {
-                            // Could implement video seek here
-                          }}
-                        >
-                          <span className="text-emerald-600 text-emerald-600 font-mono text-sm">
-                            {Math.floor(ts.time / 60)}:{String(ts.time % 60).padStart(2, '0')}
-                          </span>
-                          <span className="text-zinc-600 text-slate-600 text-sm">
-                            {ts.title}
-                          </span>
-                        </button>
-                      ))}
+                  <h2 className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{selectedExercise.name}</h2>
+                  <p className="mt-2 text-sm text-slate-500">
+                    {language === "ro"
+                      ? muscleLabels[selectedExercise.muscleGroup]?.ro || selectedExercise.muscleGroup
+                      : muscleLabels[selectedExercise.muscleGroup]?.en || selectedExercise.muscleGroup}
+                    {selectedExercise.secondaryMuscles?.length
+                      ? ` • ${selectedExercise.secondaryMuscles
+                          .map((muscle) => (language === "ro" ? muscleLabels[muscle]?.ro || muscle : muscleLabels[muscle]?.en || muscle))
+                          .join(", ")}`
+                      : ""}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedExercise(null)}
+                  className="rounded-2xl border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-6 p-5 sm:p-6">
+              <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+                <div className="space-y-4">
+                  {(selectedExercise.videoUrl || selectedExercise.gifUrl) ? (
+                    <div className="overflow-hidden rounded-[28px] border border-slate-200">
+                      <div className="aspect-video bg-slate-950">
+                        {selectedExercise.videoUrl ? (
+                          <iframe
+                            src={toEmbedUrl(selectedExercise.videoUrl)}
+                            title={selectedExercise.name}
+                            className="h-full w-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        ) : (
+                          <img
+                            src={selectedExercise.gifUrl}
+                            alt={selectedExercise.name}
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{t("Tutorial video", "Tutorial video")}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {selectedExercise.videoDuration
+                              ? `${t("Durată", "Duration")}: ${formatDuration(selectedExercise.videoDuration)}`
+                              : t("Clip demonstrativ disponibil", "Demo clip available")}
+                          </p>
+                        </div>
+                        {selectedExercise.videoUrl ? (
+                          <a
+                            href={selectedExercise.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                          >
+                            {t("Deschide pe YouTube", "Open on YouTube")}
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-[28px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+                      {t("Pentru acest exercițiu încă nu există video atașat, dar ai mai jos pașii, tips-urile și greșelile importante.", "This exercise does not have a video attached yet, but you still have the full steps, tips, and common mistakes below.")}
                     </div>
                   )}
+
+                  {selectedExercise.videoTimestamps?.length ? (
+                    <div className="rounded-[28px] border border-slate-200 bg-white p-5">
+                      <h3 className="text-lg font-semibold text-slate-900">{t("Capitole video", "Video chapters")}</h3>
+                      <div className="mt-4 grid gap-2">
+                        {selectedExercise.videoTimestamps.map((timestamp) => (
+                          <div
+                            key={`${timestamp.time}-${timestamp.title}`}
+                            className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3"
+                          >
+                            <span className="rounded-full bg-white px-2.5 py-1 font-mono text-xs font-semibold text-emerald-700">
+                              {formatTimestamp(timestamp.time)}
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">{timestamp.title}</p>
+                              {timestamp.description ? (
+                                <p className="mt-1 text-sm text-slate-500">{timestamp.description}</p>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              )}
 
-              {/* Muscle Groups */}
-              <div>
-                <h3 className="font-medium text-zinc-900 text-slate-900 mb-2">
-                  🎯 Grupă Musculară
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-3 py-1 bg-emerald-100 bg-emerald-100 text-emerald-700 text-emerald-600 rounded-full text-sm">
-                    {selectedExercise.muscleGroup}
-                  </span>
-                  {selectedExercise.secondaryMuscles?.map((muscle, i) => (
-                    <span key={i} className="px-3 py-1 bg-zinc-100 bg-slate-100 text-zinc-600 text-slate-600 rounded-full text-sm">
-                      {muscle}
-                    </span>
-                  ))}
+                <div className="space-y-4">
+                  <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                    <h3 className="text-lg font-semibold text-slate-900">{t("Tot ce îți trebuie", "Everything you need")}</h3>
+                    <div className="mt-4 space-y-3 text-sm text-slate-600">
+                      <div className="rounded-2xl bg-white p-4">
+                        <p className="font-semibold text-slate-900">{t("Echipament", "Equipment")}</p>
+                        <p className="mt-2">{selectedExercise.equipment.join(", ")}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white p-4">
+                        <p className="font-semibold text-slate-900">{t("Nivel recomandat", "Recommended level")}</p>
+                        <p className="mt-2">
+                          {language === "ro"
+                            ? difficultyLabels[selectedExercise.difficulty].ro
+                            : difficultyLabels[selectedExercise.difficulty].en}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl bg-white p-4">
+                        <p className="font-semibold text-slate-900">{t("Focus principal", "Primary focus")}</p>
+                        <p className="mt-2">
+                          {language === "ro"
+                            ? muscleLabels[selectedExercise.muscleGroup]?.ro || selectedExercise.muscleGroup
+                            : muscleLabels[selectedExercise.muscleGroup]?.en || selectedExercise.muscleGroup}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-slate-200 bg-blue-50 p-5">
+                    <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                      <ShieldAlert className="h-5 w-5 text-blue-600" />
+                      {t("Înainte să începi", "Before you start")}
+                    </h3>
+                    <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
+                      <li>• {t("Fă 5-10 minute de încălzire generală și 1-2 seturi ușoare de acomodare.", "Do 5-10 minutes of general warm-up and 1-2 lighter ramp-up sets.")}</li>
+                      <li>• {t("Asigură setup-ul stabil și amplitudinea pe care o poți controla fără durere.", "Set up a stable position and use a range of motion you can control without pain.")}</li>
+                      <li>• {t("Păstrează ritmul controlat. Tehnica vine înaintea greutății.", "Keep the tempo controlled. Technique comes before load.")}</li>
+                    </ul>
+
+                    {selectedExercise.medicalWarnings?.length ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {selectedExercise.medicalWarnings.map((warning) => (
+                          <span
+                            key={warning}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${medicalWarningMeta[warning].color}`}
+                          >
+                            <TriangleAlert className="h-3.5 w-3.5" />
+                            {language === "ro" ? medicalWarningMeta[warning].ro : medicalWarningMeta[warning].en}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
-              {/* Equipment */}
-              <div>
-                <h3 className="font-medium text-zinc-900 text-slate-900 mb-2">
-                  🏋️ Echipament Necesar
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedExercise.equipment.map((eq, i) => (
-                    <span key={i} className="px-3 py-1 bg-blue-100 bg-blue-100 text-blue-700 text-blue-600 rounded-full text-sm">
-                      {eq}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recipe Format: Setup, Execuție, Greșeli Comune */}
-              
-              {/* 📋 SETUP - Prepararea */}
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                  <span className="text-xl">📋</span> 
-                  {language === "ro" ? "SETUP - Prepararea" : "SETUP - Preparation"}
-                </h3>
-                <ul className="space-y-2">
-                  <li className="flex gap-2 items-start">
-                    <span className="text-blue-600 mt-1">1.</span>
-                    <span className="text-blue-900">{t("Pregătește echipamentul necesar", "Prepare the necessary equipment")}</span>
-                  </li>
-                  <li className="flex gap-2 items-start">
-                    <span className="text-blue-600 mt-1">2.</span>
-                    <span className="text-blue-900">{t("Asigură-te că ai spațiu suficient", "Make sure you have enough space")}</span>
-                  </li>
-                  <li className="flex gap-2 items-start">
-                    <span className="text-blue-600 mt-1">3.</span>
-                    <span className="text-blue-900">{t("Încălzește-te 5-10 minute", "Warm up for 5-10 minutes")}</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* 🏃 EXECUȚIE - Executarea */}
-              <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
-                <h3 className="font-semibold text-emerald-800 mb-3 flex items-center gap-2">
-                  <span className="text-xl">🏃</span>
-                  {language === "ro" ? "EXECUȚIE - Executarea" : "EXECUTION - Performing"}
-                </h3>
-                <ol className="space-y-3">
-                  {selectedExercise.instructions.map((step, i) => (
-                    <li key={i} className="flex gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
-                        {i + 1}
-                      </span>
-                      <span className="text-emerald-900">
-                        {step}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
-              {/* ⚠️ GREȘELI COMUNE */}
-              {selectedExercise.mistakes && selectedExercise.mistakes.length > 0 && (
-                <div className="bg-red-50 rounded-xl p-4 border border-red-100">
-                  <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
-                    <span className="text-xl">⚠️</span>
-                    {language === "ro" ? "GREȘELI COMUNE - Ce să eviți" : "COMMON MISTAKES - What to avoid"}
+              <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+                <div className="rounded-[28px] border border-emerald-200 bg-emerald-50/70 p-5">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                    <Target className="h-5 w-5 text-emerald-600" />
+                    {t("Execuție pas cu pas", "Step-by-step execution")}
                   </h3>
-                  <ul className="space-y-2">
-                    {selectedExercise.mistakes.map((mistake, i) => (
-                      <li key={i} className="flex gap-2 items-start">
-                        <span className="text-red-500 mt-1">✗</span>
-                        <span className="text-red-900">
-                          {mistake}
+                  <ol className="mt-4 space-y-3">
+                    {selectedExercise.instructions.map((step, index) => (
+                      <li key={step} className="flex gap-3 rounded-2xl bg-white px-4 py-3">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white">
+                          {index + 1}
                         </span>
+                        <span className="text-sm leading-6 text-slate-700">{step}</span>
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 </div>
-              )}
 
-              {/* ✨ SFATURI */}
-              <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
-                  <span className="text-xl">✨</span>
-                  {language === "ro" ? "SFATURI PRO" : "PRO TIPS"}
-                </h3>
-                <ul className="space-y-2">
-                  {selectedExercise.tips.map((tip, i) => (
-                    <li key={i} className="flex gap-2 items-start">
-                      <span className="text-amber-500 mt-1">✓</span>
-                      <span className="text-amber-900">
-                        {tip}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="space-y-4">
+                  <div className="rounded-[28px] border border-amber-200 bg-amber-50/70 p-5">
+                    <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                      <Sparkles className="h-5 w-5 text-amber-600" />
+                      {t("Tips utile", "Useful tips")}
+                    </h3>
+                    <ul className="mt-4 space-y-2">
+                      {selectedExercise.tips.map((tip) => (
+                        <li key={tip} className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+                          ✓ {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {selectedExercise.mistakes?.length ? (
+                    <div className="rounded-[28px] border border-rose-200 bg-rose-50/70 p-5">
+                      <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                        <TriangleAlert className="h-5 w-5 text-rose-600" />
+                        {t("Greșeli comune", "Common mistakes")}
+                      </h3>
+                      <ul className="mt-4 space-y-2">
+                        {selectedExercise.mistakes.map((mistake) => (
+                          <li key={mistake} className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+                            ✗ {mistake}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
-              {/* Tags */}
-              <div>
-                <h3 className="font-medium text-zinc-900 text-slate-900 mb-2">
-                  🏷️ Căutare
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5">
+                <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                  <Dumbbell className="h-5 w-5 text-slate-700" />
+                  {t("Tag-uri și căutare rapidă", "Tags and quick search")}
                 </h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedExercise.tags.map((tag, i) => (
-                    <span 
-                      key={i} 
-                      className="px-2 py-1 bg-zinc-100 bg-slate-100 text-zinc-500 text-slate-500 rounded text-xs cursor-pointer hover:bg-zinc-200 hover:bg-slate-300"
-                      onClick={() => {setSearchQuery(tag); setSelectedExercise(null);}}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {selectedExercise.tags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        setSearchQuery(tag);
+                        setSelectedExercise(null);
+                      }}
+                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-100"
                     >
                       #{tag}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

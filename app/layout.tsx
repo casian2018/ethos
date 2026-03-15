@@ -22,6 +22,25 @@ export const metadata: Metadata = {
   keywords: ["fitness", "workout", "gym", "buddy", "community"],
 };
 
+const themeInitScript = `
+  (() => {
+    try {
+      const savedTheme = window.localStorage.getItem("ethos-theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const theme = savedTheme === "dark" || savedTheme === "light"
+        ? savedTheme
+        : (prefersDark ? "dark" : "light");
+      const root = document.documentElement;
+      root.classList.remove("light", "dark");
+      root.classList.add(theme);
+      root.style.colorScheme = theme;
+    } catch (error) {
+      document.documentElement.classList.add("light");
+      document.documentElement.style.colorScheme = "light";
+    }
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,10 +49,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${cormorantGaramond.variable}`}
+      className={`${spaceGrotesk.variable} ${cormorantGaramond.variable} light`}
       suppressHydrationWarning
     >
       <body className="ethos-root min-h-screen font-sans antialiased bg-background text-foreground">
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <LanguageProvider>
           {children}
         </LanguageProvider>

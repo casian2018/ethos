@@ -1,5 +1,6 @@
 import {
   buildNutritionProfileContext,
+  type GoalMode,
   type DetailedUserProfile,
   type NutritionTargets,
 } from "./profile";
@@ -10,6 +11,7 @@ export type NutritionAnalysisSource =
   | "gemini-text"
   | "gemini-image"
   | "gemini-multimodal"
+  | "barcode"
   | "fallback";
 
 export interface MealPlanSuggestions {
@@ -67,6 +69,67 @@ export interface NutritionMealPlan {
   hydrationPlan: string[];
 }
 
+export type NutritionPlanSource = "ai" | "fallback";
+
+export interface SavedNutritionPlan {
+  id: string;
+  title: string;
+  summary: string;
+  goalMode: GoalMode;
+  language: "ro" | "en";
+  source: NutritionPlanSource;
+  isActive: boolean;
+  plan: NutritionMealPlan;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface NutritionPlanTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface NutritionPlanDelta extends NutritionPlanTotals {
+  waterLiters: number;
+}
+
+export interface DailyNutritionInsight {
+  tone: "good" | "warning" | "neutral";
+  title: string;
+  description: string;
+}
+
+export interface BarcodeNutritionProduct {
+  barcode: string;
+  name: string;
+  brand: string;
+  imageUrl?: string;
+  servingSize?: string;
+  quantityHintGrams: number | null;
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatPer100g: number;
+  fiberPer100g: number;
+  sugarPer100g: number;
+  sodiumMgPer100g: number;
+  nutriscore?: string;
+  novaGroup?: number | null;
+}
+
+export interface BarcodeNutritionEstimate {
+  grams: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodiumMg: number;
+}
+
 interface BuildAnalysisPromptInput {
   description?: string;
   quantityText?: string;
@@ -116,6 +179,31 @@ interface FoodReference {
   fiber: number;
   sugar: number;
   sodiumMg: number;
+}
+
+interface SavedNutritionPlanInput {
+  title?: unknown;
+  summary?: unknown;
+  goalMode?: unknown;
+  language?: unknown;
+  source?: unknown;
+  isActive?: unknown;
+  plan?: Partial<NutritionMealPlan> | null;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+interface OpenFoodFactsProductInput {
+  code?: unknown;
+  product_name?: unknown;
+  product_name_en?: unknown;
+  brands?: unknown;
+  image_front_url?: unknown;
+  image_url?: unknown;
+  serving_size?: unknown;
+  nutriscore_grade?: unknown;
+  nova_group?: unknown;
+  nutriments?: Record<string, unknown>;
 }
 
 const FOOD_REFERENCES: FoodReference[] = [
@@ -378,6 +466,34 @@ const FOOD_REFERENCES: FoodReference[] = [
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function parseStoredDate(value: unknown): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (value && typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return value.toDate();
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return new Date();
+}
+
+function extractServingSizeGrams(value: string): number | null {
+  const match = value.match(/(\d+(?:[.,]\d+)?)\s*g/i);
+  if (!match) {
+    return null;
+  }
+
+  return Math.round(Number(match[1].replace(",", ".")));
 }
 
 function safeString(value: unknown): string {
@@ -1185,6 +1301,202 @@ export function buildFallbackMealPlan(
             "Add another 0.5L before lunch.",
             `Finish the rest by evening to reach ${targets.waterLiters}L.`,
           ],
+  };
+}
+
+export function getNutritionPlanTotals(plan: NutritionMealPlan): NutritionPlanTotals {
+  return plan.meals.reduce<NutritionPlanTotals>(
+    (totals, meal) => ({
+      calories: totals.calories + meal.calories,
+      protein: totals.protein + meal.protein,
+      carbs: totals.carbs + meal.carbs,
+      fat: totals.fat + meal.fat,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
+}
+
+export function getNutritionPlanDelta(plan: NutritionMealPlan): NutritionPlanDelta {
+  const totals = getNutritionPlanTotals(plan);
+
+  return {
+    calories: totals.calories - plan.dailyTargets.calories,
+    protein: totals.protein - plan.dailyTargets.protein,
+    carbs: totals.carbs - plan.dailyTargets.carbs,
+    fat: totals.fat - plan.dailyTargets.fat,
+    waterLiters: Number((0 - plan.dailyTargets.waterLiters).toFixed(1)),
+  };
+}
+
+export function normalizeSavedNutritionPlan(
+  id: string,
+  input: SavedNutritionPlanInput,
+  fallbackPlan: NutritionMealPlan
+): SavedNutritionPlan {
+  const goalMode = input.goalMode === "lose" || input.goalMode === "gain" || input.goalMode === "maintain"
+    ? input.goalMode
+    : "maintain";
+  const language = input.language === "en" ? "en" : "ro";
+  const source = input.source === "ai" ? "ai" : "fallback";
+
+  return {
+    id,
+    title: safeString(input.title) || fallbackPlan.title,
+    summary: safeString(input.summary) || fallbackPlan.summary,
+    goalMode,
+    language,
+    source,
+    isActive: Boolean(input.isActive),
+    plan: normalizeNutritionMealPlan(input.plan, fallbackPlan),
+    createdAt: parseStoredDate(input.createdAt),
+    updatedAt: parseStoredDate(input.updatedAt),
+  };
+}
+
+export function buildDailyNutritionInsights({
+  language,
+  targets,
+  consumed,
+  waterConsumedMl = 0,
+}: {
+  language: "ro" | "en";
+  targets: NutritionTargets;
+  consumed: NutritionPlanTotals;
+  waterConsumedMl?: number;
+}): DailyNutritionInsight[] {
+  const insights: DailyNutritionInsight[] = [];
+  const caloriesDelta = targets.targetCalories - consumed.calories;
+  const proteinDelta = targets.proteinGrams - consumed.protein;
+  const hydrationDeltaMl = Math.round(targets.waterLiters * 1000 - waterConsumedMl);
+
+  if (Math.abs(caloriesDelta) <= 180) {
+    insights.push({
+      tone: "good",
+      title: language === "ro" ? "Caloriile sunt bine calibrate" : "Calories are well aligned",
+      description:
+        language === "ro"
+          ? "Ești foarte aproape de ținta zilnică. Nu ai nevoie de ajustări mari."
+          : "You are very close to the daily target. No major adjustment is needed.",
+    });
+  } else if (caloriesDelta > 180) {
+    insights.push({
+      tone: "warning",
+      title: language === "ro" ? "Mai ai loc pentru energie utilă" : "You still have room for useful energy",
+      description:
+        language === "ro"
+          ? `Mai ai aproximativ ${caloriesDelta} kcal. Închide ziua cu proteină și carbohidrați simpli de digerat.`
+          : `You still have about ${caloriesDelta} kcal left. Finish the day with protein and easy-to-digest carbs.`,
+    });
+  } else {
+    insights.push({
+      tone: "warning",
+      title: language === "ro" ? "Ai trecut peste ținta calorică" : "You are above the calorie target",
+      description:
+        language === "ro"
+          ? `Ești peste țintă cu aproximativ ${Math.abs(caloriesDelta)} kcal. Menține mesele următoare mai ușoare.`
+          : `You are above target by about ${Math.abs(caloriesDelta)} kcal. Keep the next meals lighter.`,
+    });
+  }
+
+  if (proteinDelta > 15) {
+    insights.push({
+      tone: "warning",
+      title: language === "ro" ? "Proteina este încă sub țintă" : "Protein is still under target",
+      description:
+        language === "ro"
+          ? `Îți mai lipsesc aproximativ ${proteinDelta} g proteină. Adaugă iaurt, pui, tofu sau ouă.`
+          : `You are still short by about ${proteinDelta} g of protein. Add yogurt, chicken, tofu, or eggs.`,
+    });
+  } else {
+    insights.push({
+      tone: "good",
+      title: language === "ro" ? "Proteina zilei arată bine" : "Daily protein looks solid",
+      description:
+        language === "ro"
+          ? "Distribuția proteinelor este suficient de bună pentru recovery și sațietate."
+          : "Protein distribution is solid enough for recovery and satiety.",
+    });
+  }
+
+  if (hydrationDeltaMl > 350) {
+    insights.push({
+      tone: "neutral",
+      title: language === "ro" ? "Hidratarea poate fi ridicată" : "Hydration can be improved",
+      description:
+        language === "ro"
+          ? `Mai ai de băut aproximativ ${(hydrationDeltaMl / 1000).toFixed(1)}L apă astăzi.`
+          : `You still have about ${(hydrationDeltaMl / 1000).toFixed(1)}L of water left today.`,
+    });
+  } else {
+    insights.push({
+      tone: "good",
+      title: language === "ro" ? "Hidratarea este aproape de target" : "Hydration is close to target",
+      description:
+        language === "ro"
+          ? "Aportul de lichide este într-o zonă bună pentru ziua de azi."
+          : "Fluid intake is in a good range for today.",
+    });
+  }
+
+  return insights.slice(0, 3);
+}
+
+export function normalizeOpenFoodFactsProduct(
+  input: OpenFoodFactsProductInput,
+  barcode: string,
+  language: "ro" | "en"
+): BarcodeNutritionProduct | null {
+  const name = safeString(input.product_name) || safeString(input.product_name_en);
+  if (!name) {
+    return null;
+  }
+
+  const nutriments = input.nutriments || {};
+  const servingSize = safeString(input.serving_size);
+  const sodiumValue = safeNumber(nutriments.sodium_100g, 0);
+  const saltValue = safeNumber(nutriments.salt_100g, 0);
+  const calories = safeNumber(
+    nutriments["energy-kcal_100g"] ?? nutriments.energy_kcal_100g ?? nutriments["energy-kcal"] ?? nutriments.energy_kcal,
+    0
+  );
+
+  return {
+    barcode,
+    name,
+    brand: safeString(input.brands) || (language === "ro" ? "Brand necunoscut" : "Unknown brand"),
+    imageUrl: safeString(input.image_front_url) || safeString(input.image_url) || undefined,
+    servingSize: servingSize || undefined,
+    quantityHintGrams: servingSize ? extractServingSizeGrams(servingSize) : null,
+    caloriesPer100g: clampNumber(Math.round(calories), 0, 1200),
+    proteinPer100g: clampNumber(Math.round(safeNumber(nutriments.proteins_100g, 0) * 10) / 10, 0, 100),
+    carbsPer100g: clampNumber(Math.round(safeNumber(nutriments.carbohydrates_100g, 0) * 10) / 10, 0, 100),
+    fatPer100g: clampNumber(Math.round(safeNumber(nutriments.fat_100g, 0) * 10) / 10, 0, 100),
+    fiberPer100g: clampNumber(Math.round(safeNumber(nutriments.fiber_100g, 0) * 10) / 10, 0, 100),
+    sugarPer100g: clampNumber(Math.round(safeNumber(nutriments.sugars_100g, 0) * 10) / 10, 0, 100),
+    sodiumMgPer100g: clampNumber(
+      Math.round((sodiumValue > 0 ? sodiumValue * 1000 : saltValue > 0 ? saltValue * 400 : 0) * 10) / 10,
+      0,
+      12000
+    ),
+    nutriscore: safeString(input.nutriscore_grade)?.toUpperCase() || undefined,
+    novaGroup: safeNumber(input.nova_group, 0) > 0 ? Math.round(safeNumber(input.nova_group, 0)) : null,
+  };
+}
+
+export function estimateBarcodeNutrition(product: BarcodeNutritionProduct, grams: number): BarcodeNutritionEstimate {
+  const safeGrams = clampNumber(Math.round(safeNumber(grams, product.quantityHintGrams || 100)), 1, 2000);
+  const factor = safeGrams / 100;
+  const roundMacro = (value: number) => Math.round(value * factor * 10) / 10;
+
+  return {
+    grams: safeGrams,
+    calories: Math.round(product.caloriesPer100g * factor),
+    protein: roundMacro(product.proteinPer100g),
+    carbs: roundMacro(product.carbsPer100g),
+    fat: roundMacro(product.fatPer100g),
+    fiber: roundMacro(product.fiberPer100g),
+    sugar: roundMacro(product.sugarPer100g),
+    sodiumMg: Math.round(product.sodiumMgPer100g * factor),
   };
 }
 

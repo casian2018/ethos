@@ -17,7 +17,7 @@ export function EthosCard({
       className={cn(
         "rounded-[28px] border text-card-foreground ethos-panel",
         "transition-all duration-300 ease-in-out",
-        variant === "outline" && "border-[1.5px] border-primary/35 bg-white/40 shadow-none",
+        variant === "outline" && "border-[1.5px] border-primary/35 bg-card/40 shadow-none",
         variant === "ghost" && "border-transparent bg-transparent shadow-none backdrop-blur-none",
         hover && "ethos-card-lift",
         className
@@ -48,7 +48,7 @@ export function EthosCardTitle({
   return (
     <h3
       className={cn(
-        "font-display text-2xl font-semibold leading-none tracking-tight text-slate-900",
+        "font-display text-2xl font-semibold leading-none tracking-tight text-foreground",
         className
       )}
       {...props}

@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ethos
 
-## Getting Started
+Ethos is a Next.js fitness app with:
 
-First, run the development server:
+- detailed onboarding and profile-driven personalization
+- workout generation
+- nutrition tracking and saved meal plans
+- buddy matching
+- health-stats import from screenshots
+- barcode lookup for packaged food nutrition
+
+## Local setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy the environment template and fill in real values:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Start the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Client-side Firebase config:
 
-## Learn More
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
 
-To learn more about Next.js, take a look at the following resources:
+Server-side AI config:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` optional, defaults to `gemini-2.5-flash`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Important:
 
-## Deploy on Vercel
+- Do not expose Gemini through `NEXT_PUBLIC_*` in production.
+- The app now calls Gemini only through server routes.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Vercel deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push the repo to GitHub.
+2. Import the project into Vercel.
+3. In Vercel Project Settings -> Environment Variables, add all values from `.env.example`.
+4. Redeploy after adding env vars.
+
+Recommended checks before deploy:
+
+```bash
+npm test
+npm run lint
+npm run build
+```
+
+## Production notes
+
+- Nutrition AI routes run server-side under `app/api/*`.
+- Barcode lookup uses Open Food Facts from `app/api/nutrition/barcode`.
+- Barcode camera scanning uses the browser `BarcodeDetector` API when available.
+- Manual barcode entry remains available on browsers without direct scan support.
+- Firebase web config is public by design, but Gemini must stay server-side.
+
+## Main routes
+
+- `/auth`
+- `/dev/main`
+- `/dev/profile`
+- `/dev/train/workout`
+- `/dev/nutrition`
+- `/dev/find_a_buddy/feed`
+- `/dev/stats/import`

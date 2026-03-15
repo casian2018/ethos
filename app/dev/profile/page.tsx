@@ -140,7 +140,7 @@ export default function ProfilePage() {
         <section className="rounded-[32px] border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 p-8 text-white shadow-2xl shadow-slate-300/40">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-emerald-200">Detailed profile</p>
+              <p className="text-sm uppercase tracking-[0.25em] text-emerald-200">🧬 Detailed profile</p>
               <h1 className="mt-3 text-4xl font-bold">{displayName}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200">
                 Profilul de mai jos este sursa unică pentru onboarding, workout generation și nutrition.
@@ -151,13 +151,13 @@ export default function ProfilePage() {
                 href="/dev/profile/setup"
                 className="rounded-2xl bg-white px-5 py-3 font-semibold text-slate-900 transition hover:bg-slate-100"
               >
-                Editează profilul complet
+                📝 Editează profilul complet
               </Link>
               <Link
                 href="/dev/nutrition"
                 className="rounded-2xl border border-white/20 px-5 py-3 font-semibold text-white transition hover:bg-white/10"
               >
-                Vezi nutriția
+                🥗 Vezi nutriția
               </Link>
             </div>
           </div>

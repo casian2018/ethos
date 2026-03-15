@@ -23,7 +23,7 @@ export default function Navbar({ user }: NavbarProps) {
     { href: "/dev/profile", label: "Profile", icon: "👤" },
     { href: "/dev/exercises", label: "Exercises", icon: "🏋️" },
     { href: "/train/workout", label: "Workout", icon: "💪" },
-    { href: "/dev/stats", label: "Stats", icon: "📊" },
+    { href: "/dev/evolution", label: "Evolution", icon: "📊" },
     { href: "/dev/forum", label: "Forum", icon: "💬" },
     { href: "/dev/competition", label: "Competitions", icon: "🏆" },
     { href: "/dev/find_a_buddy", label: "Find Buddy", icon: "🤝" },
@@ -48,12 +48,18 @@ export default function Navbar({ user }: NavbarProps) {
           
           {/* Desktop navigation */}
           <div className="hidden md:flex items-center gap-1">
-            {appNavItems.map((item) => (
+            {appNavItems.map((item) => {
+              const isEvolutionRoute =
+                item.href === "/dev/evolution" &&
+                (pathname.startsWith("/dev/evolution") || pathname.startsWith("/dev/stats"));
+              const isActive = isEvolutionRoute || pathname === item.href;
+
+              return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  pathname === item.href
+                  isActive
                     ? "bg-emerald-100 bg-emerald-100 text-emerald-700 text-emerald-700"
                     : "text-zinc-600 text-slate-600 hover:bg-zinc-100 hover:bg-slate-200"
                 }`}
@@ -63,7 +69,8 @@ export default function Navbar({ user }: NavbarProps) {
                   <span>{item.label}</span>
                 </span>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -96,19 +103,26 @@ export default function Navbar({ user }: NavbarProps) {
 
       {/* Mobile bottom navigation - all 9 items */}
       <div className="md:hidden flex justify-around py-2 bg-white bg-white border-t border-zinc-200 border-slate-200 overflow-x-auto">
-        {appNavItems.map((item) => (
+        {appNavItems.map((item) => {
+          const isEvolutionRoute =
+            item.href === "/dev/evolution" &&
+            (pathname.startsWith("/dev/evolution") || pathname.startsWith("/dev/stats"));
+          const isActive = isEvolutionRoute || pathname === item.href;
+
+          return (
           <Link
             key={item.href}
             href={item.href}
             className={`flex flex-col items-center text-xs py-1 px-2 ${
-              pathname === item.href
+              isActive
                 ? "text-emerald-600 text-emerald-600"
                 : "text-zinc-500 text-slate-500"
             }`}
           >
             <span className="text-lg">{item.icon}</span>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </nav>
   );

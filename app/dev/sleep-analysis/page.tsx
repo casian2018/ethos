@@ -1,91 +1,159 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs,
-  addDoc,
+import { onAuthStateChanged, type User } from "firebase/auth";
+import {
+  collection,
   doc,
-  getDoc
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
 } from "firebase/firestore";
+import {
+  CheckCircle2,
+  Clock3,
+  Loader2,
+  MoonStar,
+  ShieldAlert,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
-import UploadZone from "@/components/features/sleep/UploadZone";
-import SleepChart from "@/components/features/sleep/SleepChart";
-import AnimalCard, { calculateChronotype } from "@/components/features/sleep/AnimalCard";
-import TimelineChart from "@/components/features/sleep/TimelineChart";
-import SmartTips from "@/components/features/sleep/SmartTips";
+import {
+  buildSleepInsights,
+  calculateSleepQualityScore,
+  normalizeStoredSleepRecord,
+  type SleepInsight,
+  type SleepScreenshotAnalysis,
+  type StoredSleepRecord,
+  summarizeSleep,
+} from "@/lib/sleep";
+import type { DetailedUserProfile } from "@/lib/profile";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
 
-// Interface for parsed sleep data
-interface ParsedSleepData {
-  date: string;
-  asleepTime: string;
-  awakeTime: string;
-  deepSleep: number;
-  lightSleep: number;
-  remSleep: number;
-  awakeDuration: number;
-  efficiency: number;
+type StatusMessage = {
+  type: "error" | "success" | "info";
+  text: string;
+};
+
+function StatusBanner({ message }: { message: StatusMessage | null }) {
+  if (!message) {
+    return null;
+  }
+
+  const styles =
+    message.type === "error"
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : message.type === "success"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : "border-sky-200 bg-sky-50 text-sky-700";
+
+  const Icon = message.type === "error" ? ShieldAlert : message.type === "success" ? CheckCircle2 : Sparkles;
+
+  return (
+    <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${styles}`}>
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>{message.text}</p>
+    </div>
+  );
 }
 
-// Extended interface for sleep record
-interface SleepRecord {
-  id: string;
-  userId: string;
-  date: string;
-  sleepHours: number;
-  sleepQuality: number;
-  notes?: string;
-  detailedData?: {
-    asleepTime?: string;
-    awakeTime?: string;
-    deepSleep?: number;
-    lightSleep?: number;
-    remSleep?: number;
-    awakeDuration?: number;
-    efficiency?: number;
-  };
-  personalizedTips?: {
-    nutrition: string;
-    recovery: string;
-    environment: string;
-  };
-  creativeAnalysis?: {
-    chronotype: string;
-    chronotypeAnimal: string;
-    whyThen: string;
-    sleepCourse: string;
-  };
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      resolve(result.split(",")[1] || "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
-// User profile interface
-interface UserProfile {
-  id: string;
-  medicalConditions: string[];
-  birthDate?: string;
-  [key: string]: unknown;
+function formatDateLabel(dateKey: string, language: "ro" | "en"): string {
+  const date = new Date(`${dateKey}T00:00:00`);
+  return date.toLocaleDateString(language === "ro" ? "ro-RO" : "en-US", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-export default function SleepBiohackingPage() {
-  const { language, t } = useLanguage();
+function formatMinutesAsDuration(minutes: number, language: "ro" | "en"): string {
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+
+  if (hours <= 0) {
+    return `${remaining}m`;
+  }
+
+  return language === "ro" ? `${hours}h ${remaining}m` : `${hours}h ${remaining}m`;
+}
+
+function formatSleepHours(hours: number): string {
+  return `${hours.toFixed(1)}h`;
+}
+
+function getConfidenceLabel(confidence: SleepScreenshotAnalysis["confidence"], language: "ro" | "en"): string {
+  if (confidence === "high") {
+    return language === "ro" ? "încredere mare" : "high confidence";
+  }
+
+  if (confidence === "low") {
+    return language === "ro" ? "încredere redusă" : "low confidence";
+  }
+
+  return language === "ro" ? "încredere medie" : "medium confidence";
+}
+
+function getInsightStyles(tone: SleepInsight["tone"]) {
+  if (tone === "good") {
+    return "border-emerald-200 bg-emerald-50/60";
+  }
+
+  if (tone === "warning") {
+    return "border-amber-200 bg-amber-50/70";
+  }
+
+  return "border-sky-200 bg-sky-50/60";
+}
+
+function getQualityStyles(score: number) {
+  if (score >= 82) {
+    return "text-emerald-600 bg-emerald-50 border-emerald-200";
+  }
+
+  if (score >= 68) {
+    return "text-amber-600 bg-amber-50 border-amber-200";
+  }
+
+  return "text-rose-600 bg-rose-50 border-rose-200";
+}
+
+export default function SleepAnalysisPage() {
   const router = useRouter();
-  const [user, setUser] = useState<typeof auth.currentUser | null>(null);
+  const { language } = useLanguage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<DetailedUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [sleepRecords, setSleepRecords] = useState<SleepRecord[]>([]);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [sleepRecords, setSleepRecords] = useState<StoredSleepRecord[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [extractedData, setExtractedData] = useState<ParsedSleepData | null>(null);
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
+  const [analysis, setAnalysis] = useState<SleepScreenshotAnalysis | null>(null);
+  const [message, setMessage] = useState<StatusMessage | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -93,583 +161,742 @@ export default function SleepBiohackingPage() {
         router.push("/auth");
         return;
       }
+
       setUser(currentUser);
-      
-      // Fetch user profile for medical conditions
+
       try {
-        const profileDoc = await getDoc(doc(db, "profiles", currentUser.uid));
+        const [profileDoc, subcollectionSnapshot, legacySnakeSnapshot, legacyCamelSnapshot] = await Promise.all([
+          getDoc(doc(db, "users", currentUser.uid)),
+          getDocs(collection(db, "users", currentUser.uid, "sleep_records")),
+          getDocs(query(collection(db, "sleep_records"), where("userId", "==", currentUser.uid))),
+          getDocs(query(collection(db, "sleepRecords"), where("userId", "==", currentUser.uid))),
+        ]);
+
         if (profileDoc.exists()) {
-          setUserProfile(profileDoc.data() as UserProfile);
+          setProfile(profileDoc.data() as DetailedUserProfile);
         }
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-      }
-      
-      // Fetch sleep records
-      try {
-        const q = query(
-          collection(db, "sleepRecords"),
-          where("userId", "==", currentUser.uid)
+
+        const records = [
+          ...subcollectionSnapshot.docs.map((recordDoc) =>
+            normalizeStoredSleepRecord(recordDoc.id, recordDoc.data() as Record<string, unknown>)
+          ),
+          ...legacySnakeSnapshot.docs.map((recordDoc) =>
+            normalizeStoredSleepRecord(recordDoc.id, recordDoc.data() as Record<string, unknown>)
+          ),
+          ...legacyCamelSnapshot.docs.map((recordDoc) =>
+            normalizeStoredSleepRecord(recordDoc.id, recordDoc.data() as Record<string, unknown>)
+          ),
+        ];
+
+        const uniqueRecords = new Map<string, StoredSleepRecord>();
+        for (const record of records) {
+          const key = `${record.dateKey}-${record.asleepTime}-${record.awakeTime}`;
+          const current = uniqueRecords.get(key);
+          if (!current || (record.updatedAt?.getTime() || 0) >= (current.updatedAt?.getTime() || 0)) {
+            uniqueRecords.set(key, record);
+          }
+        }
+
+        setSleepRecords(
+          Array.from(uniqueRecords.values()).sort((left, right) => right.dateKey.localeCompare(left.dateKey))
         );
-        const snapshot = await getDocs(q);
-        const records = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as SleepRecord[];
-        setSleepRecords(records.sort((a, b) => b.date.localeCompare(a.date)));
-      } catch (err) {
-        console.error("Error fetching sleep records:", err);
+      } catch (error) {
+        console.error("Error loading sleep data:", error);
+        setMessage({
+          type: "error",
+          text:
+            language === "ro"
+              ? "Nu am putut încărca istoricul de somn."
+              : "Could not load your sleep history.",
+        });
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [language, router]);
 
-  // Calculate chronotype based on sleep data
-  const chronotype = sleepRecords.length >= 3 
-    ? calculateChronotype(
-        sleepRecords
-          .filter(r => r.detailedData?.asleepTime && r.detailedData?.awakeTime)
-          .map(r => ({
-            asleepTime: r.detailedData!.asleepTime!,
-            awakeTime: r.detailedData!.awakeTime!
-          }))
-      )
-    : "bear";
-
-  // Calculate streak
-  const calculateStreak = (records: SleepRecord[]): number => {
-    if (records.length === 0) return 0;
-    
-    // Sort by date descending
-    const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date));
-    
-    let streak = 0;
-    const today = new Date();
-    
-    for (let i = 0; i < sorted.length; i++) {
-      const recordDate = new Date(sorted[i].date.split('/').reverse().join('-'));
-      const diffDays = Math.floor((today.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      // If within 1 day and sleep was good (>= 7 hours)
-      if (diffDays <= 1 && sorted[i].sleepHours >= 7) {
-        streak++;
-      } else if (diffDays > i + 1) {
-        break;
-      }
-    }
-    
-    return streak;
-  };
-
-  // Get chronotype info
-  const getChronotypeInfo = () => {
-    const info: Record<string, { tips: string[]; circadianInfo: { peakEnergy: string; lowEnergy: string; recommendedBedtime: string; recommendedWakeTime: string } }> = {
-      wolf: {
-        tips: [
-          "Accept your natural rhythm - work with it, not against it",
-          "Schedule important tasks for evening hours",
-          "Use blackout curtains for morning sleep",
-          "Avoid bright lights at night"
-        ],
-        circadianInfo: {
-          peakEnergy: "20:00 - 24:00",
-          lowEnergy: "06:00 - 10:00",
-          recommendedBedtime: "00:00",
-          recommendedWakeTime: "08:00"
-        }
-      },
-      lion: {
-        tips: [
-          "Wake up early and tackle hardest tasks first",
-          "Morning exercise boosts your energy",
-          "Avoid caffeine after 14:00",
-          "Stick to a strict sleep schedule"
-        ],
-        circadianInfo: {
-          peakEnergy: "06:00 - 12:00",
-          lowEnergy: "14:00 - 16:00",
-          recommendedBedtime: "21:00",
-          recommendedWakeTime: "05:00"
-        }
-      },
-      bear: {
-        tips: [
-          "Follow the solar cycle for optimal energy",
-          "Morning sunlight helps regulate your rhythm",
-          "Avoid screens 1 hour before bed",
-          "Consistent wake time is key"
-        ],
-        circadianInfo: {
-          peakEnergy: "10:00 - 14:00",
-          lowEnergy: "14:00 - 16:00",
-          recommendedBedtime: "22:00",
-          recommendedWakeTime: "07:00"
-        }
-      },
-      dolphin: {
-        tips: [
-          "Create a relaxing bedtime routine",
-          "Keep bedroom cool and dark",
-          "Avoid caffeine entirely",
-          "Try relaxation techniques before sleep"
-        ],
-        circadianInfo: {
-          peakEnergy: "10:00 - 12:00",
-          lowEnergy: "22:00 - 24:00",
-          recommendedBedtime: "23:00",
-          recommendedWakeTime: "06:00"
-        }
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
     };
-    return info[chronotype] || info.bear;
+  }, [previewUrl]);
+
+  const clearSelection = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setAnalysis(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
-  // Handle file selection
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setMessage({
+        type: "error",
+        text: language === "ro" ? "Selectează o imagine validă." : "Select a valid image.",
+      });
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setMessage({
+        type: "error",
+        text:
+          language === "ro"
+            ? "Imaginea trebuie să aibă sub 8MB."
+            : "The image must be smaller than 8MB.",
+      });
+      return;
+    }
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
-    setExtractedData(null);
-    setError("");
+    setAnalysis(null);
+    setMessage(null);
   };
 
-  // Simulate AI extraction (in production, this would use Gemini API)
-  const simulateExtraction = async () => {
-    setIsProcessing(true);
-    setError("");
-    
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate mock data based on current date
-    const today = new Date();
-    const mockData: ParsedSleepData = {
-      date: today.toLocaleDateString("ro-RO"),
-      asleepTime: "23:30",
-      awakeTime: "07:15",
-      deepSleep: 95,
-      lightSleep: 180,
-      remSleep: 110,
-      awakeDuration: 15,
-      efficiency: 88
-    };
-    
-    setExtractedData(mockData);
-    setIsProcessing(false);
-  };
-
-  // Save extracted data
-  const saveSleepData = async () => {
-    if (!user || !extractedData) return;
-    
-    setIsProcessing(true);
-    try {
-      const sleepRecord = {
-        userId: user.uid,
-        date: extractedData.date,
-        sleepHours: (new Date(`2000-01-01 ${extractedData.awakeTime}`).getTime() - 
-                  new Date(`2000-01-01 ${extractedData.asleepTime}`).getTime()) / (1000 * 60 * 60),
-        sleepQuality: Math.round(extractedData.efficiency / 20),
-        detailedData: {
-          asleepTime: extractedData.asleepTime,
-          awakeTime: extractedData.awakeTime,
-          deepSleep: extractedData.deepSleep,
-          lightSleep: extractedData.lightSleep,
-          remSleep: extractedData.remSleep,
-          awakeDuration: extractedData.awakeDuration,
-          efficiency: extractedData.efficiency
-        }
-      };
-      
-      await addDoc(collection(db, "sleepRecords"), sleepRecord);
-      
-      // Refresh records
-      const q = query(collection(db, "sleepRecords"), where("userId", "==", user.uid));
-      const snapshot = await getDocs(q);
-      const records = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as SleepRecord[];
-      setSleepRecords(records.sort((a, b) => b.date.localeCompare(a.date)));
-      
-      setSuccess(language === "ro" ? "Date de somn salvate!" : "Sleep data saved!");
-      setPreviewUrl(null);
-      setExtractedData(null);
-      setSelectedFile(null);
-    } catch (err) {
-      console.error("Error saving sleep data:", err);
-      setError(language === "ro" ? "Eroare la salvare" : "Error saving data");
+  const analyzeSleepScreenshot = async () => {
+    if (!selectedFile) {
+      return;
     }
-    setIsProcessing(false);
+
+    setIsAnalyzing(true);
+    setMessage(null);
+
+    try {
+      const imageBase64 = await readFileAsBase64(selectedFile);
+      const response = await fetch("/api/sleep/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64,
+          imageMimeType: selectedFile.type,
+          language,
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        analysis?: SleepScreenshotAnalysis;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.analysis) {
+        throw new Error(payload.error || "Failed to analyze sleep screenshot.");
+      }
+
+      setAnalysis(payload.analysis);
+      setMessage({
+        type: "success",
+        text:
+          language === "ro"
+            ? "Screenshot-ul a fost analizat. Verifică datele înainte de salvare."
+            : "The screenshot was analyzed. Review the data before saving.",
+      });
+    } catch (error) {
+      console.error("Error analyzing sleep screenshot:", error);
+      setMessage({
+        type: "error",
+        text:
+          error instanceof Error && error.message
+            ? error.message
+            : language === "ro"
+              ? "Nu am putut interpreta screenshot-ul de somn."
+              : "Could not interpret the sleep screenshot.",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
+
+  const saveSleepRecord = async () => {
+    if (!user || !analysis) {
+      return;
+    }
+
+    setIsSaving(true);
+    setMessage(null);
+
+    try {
+      const recordRef = doc(db, "users", user.uid, "sleep_records", analysis.dateKey);
+      const existingRecord = await getDoc(recordRef);
+      const existingCreatedAt = existingRecord.exists() ? existingRecord.data().createdAt : null;
+      const qualityScore = calculateSleepQualityScore({
+        totalSleepMinutes: analysis.totalSleepMinutes,
+        efficiency: analysis.efficiency,
+        deepMinutes: analysis.stages.deepMinutes,
+        remMinutes: analysis.stages.remMinutes,
+        awakeMinutes: analysis.stages.awakeMinutes,
+      });
+
+      await setDoc(
+        recordRef,
+        {
+          userId: user.uid,
+          date: analysis.dateKey,
+          asleepTime: analysis.asleepTime,
+          awakeTime: analysis.awakeTime,
+          totalSleepMinutes: analysis.totalSleepMinutes,
+          timeInBedMinutes: analysis.timeInBedMinutes,
+          deepSleepMinutes: analysis.stages.deepMinutes,
+          lightSleepMinutes: analysis.stages.lightMinutes,
+          remSleepMinutes: analysis.stages.remMinutes,
+          awakeMinutes: analysis.stages.awakeMinutes,
+          efficiency: analysis.efficiency,
+          qualityScore,
+          sleepHours: Math.round((analysis.totalSleepMinutes / 60) * 10) / 10,
+          sourceApp: analysis.sourceApp,
+          confidence: analysis.confidence,
+          visibleClues: analysis.visibleClues,
+          notes: analysis.notes,
+          createdAt: existingCreatedAt || serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      const savedRecord = normalizeStoredSleepRecord(analysis.dateKey, {
+        userId: user.uid,
+        date: analysis.dateKey,
+        asleepTime: analysis.asleepTime,
+        awakeTime: analysis.awakeTime,
+        totalSleepMinutes: analysis.totalSleepMinutes,
+        timeInBedMinutes: analysis.timeInBedMinutes,
+        deepSleepMinutes: analysis.stages.deepMinutes,
+        lightSleepMinutes: analysis.stages.lightMinutes,
+        remSleepMinutes: analysis.stages.remMinutes,
+        awakeMinutes: analysis.stages.awakeMinutes,
+        efficiency: analysis.efficiency,
+        qualityScore,
+        sleepHours: Math.round((analysis.totalSleepMinutes / 60) * 10) / 10,
+        sourceApp: analysis.sourceApp,
+        confidence: analysis.confidence,
+        visibleClues: analysis.visibleClues,
+        notes: analysis.notes,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setSleepRecords((current) => {
+        const next = [savedRecord, ...current.filter((record) => record.dateKey !== savedRecord.dateKey)];
+        return next.sort((left, right) => right.dateKey.localeCompare(left.dateKey));
+      });
+      setMessage({
+        type: "success",
+        text:
+          language === "ro"
+            ? "Somnul a fost salvat în istoric."
+            : "The sleep record was saved to history.",
+      });
+      clearSelection();
+    } catch (error) {
+      console.error("Error saving sleep record:", error);
+      setMessage({
+        type: "error",
+        text:
+          language === "ro"
+            ? "Nu am putut salva înregistrarea de somn."
+            : "Could not save the sleep record.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const summary = useMemo(() => summarizeSleep(sleepRecords), [sleepRecords]);
+  const insights = useMemo(
+    () =>
+      buildSleepInsights({
+        records: sleepRecords,
+        medicalConditions: profile?.medicalConditions,
+        language,
+      }),
+    [language, profile?.medicalConditions, sleepRecords]
+  );
+  const recentRecords = useMemo(() => sleepRecords.slice(0, 7), [sleepRecords]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <div className="ethos-panel rounded-[32px] px-10 py-10 text-center">
+          <div className="animate-ethos-float mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-slate-900 to-emerald-500 text-white">
+            <MoonStar className="h-5 w-5" />
+          </div>
+          <h1 className="ethos-display mt-5 text-4xl font-semibold text-slate-900">
+            {language === "ro" ? "Pregătesc zona de sleep" : "Preparing your sleep hub"}
+          </h1>
+        </div>
       </div>
     );
   }
 
-  // Get chart data
-  const chartData = sleepRecords.slice(0, 7).reverse().map(record => ({
-    date: record.date.split("/")[0].slice(0, 3),
-    target: 8,
-    actual: record.sleepHours
-  }));
-
-  // Get timeline data
-  const timelineData = sleepRecords
-    .filter(r => r.detailedData?.asleepTime)
-    .slice(0, 1)
-    .map(r => ({
-      date: r.date,
-      asleepTime: r.detailedData!.asleepTime!,
-      awakeTime: r.detailedData!.awakeTime!,
-      deepSleep: r.detailedData!.deepSleep || 0,
-      lightSleep: r.detailedData!.lightSleep || 0,
-      remSleep: r.detailedData!.remSleep || 0,
-      awakeDuration: r.detailedData!.awakeDuration || 0
-    }));
-
-  // Calculate average sleep
-  const avgSleep = sleepRecords.length > 0
-    ? Math.round(sleepRecords.reduce((sum, r) => sum + r.sleepHours, 0) / sleepRecords.length * 10) / 10
-    : 0;
+  const lastNight = summary.lastNight;
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Night Sky Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900">
-        {/* Stars - static positions */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-[5%] left-[10%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.5, animationDelay: '0.2s' }} />
-          <div className="absolute top-[8%] left-[25%] w-1.5 h-1.5 bg-white rounded-full animate-pulse" style={{ opacity: 0.7, animationDelay: '0.8s' }} />
-          <div className="absolute top-[12%] left-[45%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.4, animationDelay: '1.5s' }} />
-          <div className="absolute top-[15%] left-[65%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.6, animationDelay: '2.2s' }} />
-          <div className="absolute top-[20%] left-[85%] w-1.5 h-1.5 bg-white rounded-full animate-pulse" style={{ opacity: 0.5, animationDelay: '0.5s' }} />
-          <div className="absolute top-[25%] left-[15%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.3, animationDelay: '1.8s' }} />
-          <div className="absolute top-[30%] left-[35%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.8, animationDelay: '0.3s' }} />
-          <div className="absolute top-[35%] left-[55%] w-1.5 h-1.5 bg-white rounded-full animate-pulse" style={{ opacity: 0.4, animationDelay: '1.2s' }} />
-          <div className="absolute top-[40%] left-[75%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.6, animationDelay: '2.5s' }} />
-          <div className="absolute top-[45%] left-[5%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.5, animationDelay: '0.7s' }} />
-          <div className="absolute top-[50%] left-[20%] w-1.5 h-1.5 bg-white rounded-full animate-pulse" style={{ opacity: 0.3, animationDelay: '1.9s' }} />
-          <div className="absolute top-[55%] left-[40%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.7, animationDelay: '0.4s' }} />
-          <div className="absolute top-[60%] left-[60%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.5, animationDelay: '1.6s' }} />
-          <div className="absolute top-[65%] left-[80%] w-1.5 h-1.5 bg-white rounded-full animate-pulse" style={{ opacity: 0.4, animationDelay: '2.1s' }} />
-          <div className="absolute top-[70%] left-[10%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.6, animationDelay: '0.9s' }} />
-          <div className="absolute top-[75%] left-[30%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.3, animationDelay: '1.4s' }} />
-          <div className="absolute top-[80%] left-[50%] w-1.5 h-1.5 bg-white rounded-full animate-pulse" style={{ opacity: 0.8, animationDelay: '2.8s' }} />
-          <div className="absolute top-[85%] left-[70%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.5, animationDelay: '0.6s' }} />
-          <div className="absolute top-[90%] left-[90%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.7, animationDelay: '1.1s' }} />
-          <div className="absolute top-[95%] left-[15%] w-1 h-1 bg-white rounded-full animate-pulse" style={{ opacity: 0.4, animationDelay: '1.7s' }} />
-        </div>
-        {/* Nebula effect */}
-        <div className="absolute inset-0 bg-gradient-radial from-emerald-500/10 via-transparent to-transparent" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="pb-24">
+      <section className="ethos-panel rounded-[36px] p-6 sm:p-8">
+        <span className="ethos-kicker">
+          <MoonStar className="h-3.5 w-3.5" />
+          {language === "ro" ? "Sleep" : "Sleep"}
+        </span>
 
-      {/* Content */}
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <header className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white">
-                {t("sleep.title")}
-              </h1>
-              <p className="text-emerald-300/80 mt-1">
-                {t("sleep.subtitle")}
+        <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <h1 className="ethos-display text-[2.8rem] font-semibold leading-[0.92] tracking-[-0.05em] text-slate-900 sm:text-[4rem]">
+              {language === "ro"
+                ? "Importă screenshot-ul și vezi imediat cât ai dormit."
+                : "Import the screenshot and see right away how much you slept."}
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+              {language === "ro"
+                ? "Pagina arată doar ce contează: datele extrase, ultima noapte, istoricul recent și sfaturi bazate pe somnul tău trecut."
+                : "This page shows only what matters: extracted data, your latest night, recent history, and tips based on your past sleep."}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="ethos-panel-soft rounded-[24px] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                {language === "ro" ? "Medie" : "Average"}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {summary.averageSleepHours > 0 ? formatSleepHours(summary.averageSleepHours) : "--"}
               </p>
             </div>
-            {/* Stats */}
-            <div className="flex gap-4">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                <p className="text-emerald-400 text-xs">{language === "ro" ? "Medie Somn" : "Avg Sleep"}</p>
-                <p className="text-white text-2xl font-bold">{avgSleep}h</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                <p className="text-emerald-400 text-xs">{language === "ro" ? "Înregistrări" : "Records"}</p>
-                <p className="text-white text-2xl font-bold">{sleepRecords.length}</p>
-              </div>
+            <div className="ethos-panel-soft rounded-[24px] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                {language === "ro" ? "Eficiență" : "Efficiency"}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {summary.averageEfficiency > 0 ? `${summary.averageEfficiency}%` : "--"}
+              </p>
+            </div>
+            <div className="ethos-panel-soft rounded-[24px] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                {language === "ro" ? "Debt" : "Debt"}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">{summary.sleepDebtHours.toFixed(1)}h</p>
             </div>
           </div>
-        </header>
+        </div>
+      </section>
 
-        {/* Success/Error Messages */}
-        {success && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-500/20 border border-emerald-500/50">
-            <p className="text-emerald-300">{success}</p>
-          </div>
-        )}
-        {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/20 border border-red-500/50">
-            <p className="text-red-300">{error}</p>
-          </div>
-        )}
+      <div className="mt-6">
+        <StatusBanner message={message} />
+      </div>
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Upload Zone */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
-              <h2 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
-                <span>📱</span>
-                {t("sleep.import")}
+      <section className="mt-6 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="ethos-panel rounded-[36px] p-6 sm:p-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                {language === "ro" ? "Import sleep screenshot" : "Import sleep screenshot"}
+              </p>
+              <h2 className="ethos-display mt-3 text-4xl font-semibold text-slate-900">
+                {language === "ro" ? "Extrage orele de somn" : "Extract sleep hours"}
               </h2>
-              <UploadZone 
-                onFileSelect={handleFileSelect} 
-                isProcessing={isProcessing} 
-              />
-              
-              {/* Preview and Extract */}
-              {previewUrl && (
-                <div className="mt-4">
-                  <div className="bg-white/10 rounded-xl p-4">
-                    <img 
-                      src={previewUrl} 
-                      alt="Sleep screenshot" 
-                      className="max-w-xs rounded-lg mx-auto border border-white/20"
-                    />
-                  </div>
-                  
-                  {!extractedData && !isProcessing && (
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+                {language === "ro"
+                  ? "Detectăm data, intervalul de somn, durata totală și etapele vizibile direct din imagine."
+                  : "We detect the date, sleep window, total duration, and visible stages directly from the image."}
+              </p>
+            </div>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              <Upload className="h-4 w-4" />
+              {language === "ro" ? "Alege screenshot" : "Choose screenshot"}
+            </button>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              className="rounded-[30px] border border-dashed border-slate-300 bg-slate-50 p-5 text-left hover:border-emerald-300 hover:bg-white"
+            >
+              {previewUrl ? (
+                <div className="space-y-4">
+                  <img
+                    src={previewUrl}
+                    alt="Sleep screenshot preview"
+                    className="h-[340px] w-full rounded-[24px] border border-slate-200 object-cover object-top"
+                  />
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-sm text-slate-500">{selectedFile?.name}</p>
                     <button
-                      onClick={simulateExtraction}
-                      className="mt-4 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        clearSelection();
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
-                      {language === "ro" ? "Extrage Date cu AI" : "Extract Data with AI"}
+                      {language === "ro" ? "Șterge" : "Remove"}
                     </button>
-                  )}
-                  
-                  {extractedData && (
-                    <div className="mt-4 bg-emerald-500/20 rounded-xl p-4 border border-emerald-500/50">
-                      <h3 className="text-emerald-300 font-semibold mb-3">
-                        {language === "ro" ? "✅ Date Extrase" : "✅ Extracted Data"}
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <span className="text-slate-400">Data:</span>
-                          <span className="text-white ml-2">{extractedData.date}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-400">Culcare:</span>
-                          <span className="text-white ml-2">{extractedData.asleepTime}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-400">Trezire:</span>
-                          <span className="text-white ml-2">{extractedData.awakeTime}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-400">Eficiență:</span>
-                          <span className="text-emerald-400 ml-2">{extractedData.efficiency}%</span>
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={saveSleepData}
-                        disabled={isProcessing}
-                        className="mt-4 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors"
-                      >
-                        {language === "ro" ? "Salvează" : "Save"}
-                      </button>
-                    </div>
-                  )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex min-h-[340px] flex-col items-center justify-center rounded-[24px] bg-white px-6 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-gradient-to-br from-slate-900 to-emerald-500 text-white">
+                    <MoonStar className="h-7 w-7" />
+                  </div>
+                  <p className="mt-5 text-lg font-semibold text-slate-900">
+                    {language === "ro" ? "Click pentru upload" : "Click to upload"}
+                  </p>
+                  <p className="mt-2 max-w-xs text-sm leading-6 text-slate-500">
+                    {language === "ro"
+                      ? "Screenshot din aplicația ta de somn, cu data și orele vizibile."
+                      : "A screenshot from your sleep app, with the date and times visible."}
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Sleep Chart */}
-            {chartData.length > 0 && (
-              <SleepChart data={chartData} />
-            )}
-          </div>
+            <div className="rounded-[30px] bg-slate-50 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                    {language === "ro" ? "Preview analiză" : "Analysis preview"}
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold text-slate-900">
+                    {analysis
+                      ? language === "ro"
+                        ? "Date detectate"
+                        : "Detected data"
+                      : language === "ro"
+                        ? "Aștept imaginea"
+                        : "Waiting for an image"}
+                  </h3>
+                </div>
+                {analysis ? (
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                    {getConfidenceLabel(analysis.confidence, language)}
+                  </span>
+                ) : null}
+              </div>
 
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Chronotype / Animal Card */}
-            {sleepRecords.length >= 3 && (
-              <AnimalCard 
-                animal={chronotype}
-                description=""
-                tips={getChronotypeInfo().tips}
-                circadianInfo={getChronotypeInfo().circadianInfo}
-              />
-            )}
+              {analysis ? (
+                <div className="mt-5 space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[24px] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        {language === "ro" ? "Dată" : "Date"}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900">
+                        {formatDateLabel(analysis.dateKey, language)}
+                      </p>
+                    </div>
+                    <div className="rounded-[24px] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        {language === "ro" ? "Fereastră de somn" : "Sleep window"}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900">
+                        {analysis.asleepTime || "--:--"} → {analysis.awakeTime || "--:--"}
+                      </p>
+                    </div>
+                  </div>
 
-            {/* Timeline */}
-            {timelineData.length > 0 && (
-              <TimelineChart records={timelineData} />
-            )}
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-[24px] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        {language === "ro" ? "Somn total" : "Total sleep"}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-900">
+                        {formatMinutesAsDuration(analysis.totalSleepMinutes, language)}
+                      </p>
+                    </div>
+                    <div className="rounded-[24px] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        {language === "ro" ? "Awake" : "Awake"}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-900">{analysis.stages.awakeMinutes}m</p>
+                    </div>
+                    <div className="rounded-[24px] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        {language === "ro" ? "Eficiență" : "Efficiency"}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-900">{analysis.efficiency}%</p>
+                    </div>
+                  </div>
 
-            {/* Smart Tips */}
-            <SmartTips 
-              medicalConditions={userProfile?.medicalConditions || []}
-              sleepData={{
-                avgSleepHours: avgSleep,
-                avgQuality: sleepRecords.length > 0 
-                  ? Math.round(sleepRecords.reduce((sum, r) => sum + r.sleepQuality, 0) / sleepRecords.length)
-                  : 0
-              }}
-            />
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-[24px] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Deep</p>
+                      <p className="mt-2 text-xl font-semibold text-slate-900">{analysis.stages.deepMinutes}m</p>
+                    </div>
+                    <div className="rounded-[24px] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">REM</p>
+                      <p className="mt-2 text-xl font-semibold text-slate-900">{analysis.stages.remMinutes}m</p>
+                    </div>
+                    <div className="rounded-[24px] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                        {language === "ro" ? "Light" : "Light"}
+                      </p>
+                      <p className="mt-2 text-xl font-semibold text-slate-900">{analysis.stages.lightMinutes}m</p>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-slate-500">
+                    {(analysis.visibleClues[0] || analysis.sourceApp) &&
+                      `${language === "ro" ? "Sursă" : "Source"}: ${analysis.sourceApp}`}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-[24px] bg-white p-5 text-sm leading-7 text-slate-600">
+                  {language === "ro"
+                    ? "După analiză vei vedea aici doar datele importante: data, orele, durata și etapele de somn."
+                    : "After analysis you will see only the important data: date, times, duration, and sleep stages."}
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={analyzeSleepScreenshot}
+                  disabled={!selectedFile || isAnalyzing}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:bg-slate-300"
+                >
+                  {isAnalyzing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+                  {language === "ro" ? "Analizează" : "Analyze"}
+                </button>
+                <button
+                  onClick={saveSleepRecord}
+                  disabled={!analysis || isSaving}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:text-slate-300"
+                >
+                  {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+                  {language === "ro" ? "Salvează" : "Save"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Sleep History */}
-        {sleepRecords.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-white font-bold text-xl mb-4 flex items-center gap-2">
-              <span>📋</span>
-              {language === "ro" ? "Istoricul Somnului" : "Sleep History"}
-            </h2>
-            
-            {/* Stats Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                <p className="text-emerald-400 text-xs">{language === "ro" ? "Total Nopți" : "Total Nights"}</p>
-                <p className="text-white text-2xl font-bold">{sleepRecords.length}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                <p className="text-emerald-400 text-xs">{language === "ro" ? "Medie Ore" : "Avg Hours"}</p>
-                <p className="text-white text-2xl font-bold">{avgSleep}h</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                <p className="text-emerald-400 text-xs">{language === "ro" ? "Calitate Medie" : "Avg Quality"}</p>
-                <p className="text-white text-2xl font-bold">
-                  {Math.round(sleepRecords.reduce((sum, r) => sum + r.sleepQuality, 0) / sleepRecords.length * 10) / 10}/5
+        <div className="space-y-6">
+          <div className="ethos-panel rounded-[36px] p-6 sm:p-7">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                  {language === "ro" ? "Ultima noapte" : "Last night"}
                 </p>
+                <h2 className="ethos-display mt-3 text-4xl font-semibold text-slate-900">
+                  {lastNight ? formatMinutesAsDuration(lastNight.totalSleepMinutes, language) : "--"}
+                </h2>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                <p className="text-emerald-400 text-xs">{language === "ro" ? "Streak" : "Streak"}</p>
-                <p className="text-white text-2xl font-bold">{calculateStreak(sleepRecords)} 🔥</p>
-              </div>
+              {lastNight ? (
+                <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${getQualityStyles(lastNight.qualityScore)}`}>
+                  {lastNight.qualityScore}/100
+                </span>
+              ) : null}
             </div>
-            
-            {/* Records Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sleepRecords.map((record, index) => (
-                <div 
-                  key={record.id}
-                  className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/20 hover:border-emerald-500/50 transition-all hover:scale-[1.02]"
-                >
-                  {/* Date & Hours */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <span className="text-white font-semibold text-lg">{record.date}</span>
-                      <p className="text-emerald-400 text-sm">
-                        {record.detailedData?.asleepTime || "--:--"} → {record.detailedData?.awakeTime || "--:--"}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-2xl font-bold ${record.sleepHours >= 7 ? "text-emerald-400" : record.sleepHours >= 5 ? "text-yellow-400" : "text-red-400"}`}>
-                        {record.sleepHours}h
-                      </span>
-                    </div>
+
+            {lastNight ? (
+              <div className="mt-6 space-y-4">
+                  <div className="rounded-[28px] bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{formatDateLabel(lastNight.dateKey, language)}</p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {lastNight.asleepTime || "--:--"} → {lastNight.awakeTime || "--:--"} • {lastNight.sourceApp}
+                        </p>
+                      </div>
+                      <span className="ethos-chip">
+                      <Clock3 className="h-3.5 w-3.5" />
+                      {lastNight.efficiency}%
+                    </span>
                   </div>
-                  
-                  {/* Sleep Quality Stars */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <span 
-                          key={star} 
-                          className={`text-lg ${star <= record.sleepQuality ? "text-yellow-400" : "text-slate-600"}`}
-                        >
-                          ★
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    {
+                      label: language === "ro" ? "Deep" : "Deep",
+                      value: lastNight.stages.deepMinutes,
+                      color: "bg-indigo-500",
+                    },
+                    {
+                      label: "REM",
+                      value: lastNight.stages.remMinutes,
+                      color: "bg-sky-500",
+                    },
+                    {
+                      label: language === "ro" ? "Light" : "Light",
+                      value: lastNight.stages.lightMinutes,
+                      color: "bg-cyan-500",
+                    },
+                    {
+                      label: language === "ro" ? "Awake" : "Awake",
+                      value: lastNight.stages.awakeMinutes,
+                      color: "bg-orange-500",
+                    },
+                  ].map((item) => {
+                    const totalReference = item.label === (language === "ro" ? "Awake" : "Awake")
+                      ? lastNight.timeInBedMinutes
+                      : lastNight.totalSleepMinutes;
+
+                    return (
+                      <div key={item.label}>
+                        <div className="mb-2 flex items-center justify-between text-sm">
+                          <span className="font-medium text-slate-700">{item.label}</span>
+                          <span className="text-slate-500">{item.value}m</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className={`h-2 rounded-full ${item.color}`}
+                            style={{ width: `${Math.min((item.value / Math.max(totalReference, 1)) * 100, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {lastNight.visibleClues.length > 0 ? (
+                  <div className="rounded-[28px] bg-slate-50 p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                      {language === "ro" ? "Am citit din imagine" : "Read from image"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {lastNight.visibleClues.map((clue) => (
+                        <span key={clue} className="ethos-chip text-xs">
+                          {clue}
                         </span>
                       ))}
                     </div>
-                    <span className="text-slate-400 text-sm">
-                      {record.sleepQuality}/5
-                    </span>
                   </div>
-                  
-                  {/* Sleep Stages */}
-                  {record.detailedData?.deepSleep !== undefined && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-purple-400">🌙 Deep</span>
-                        <span className="text-white">{record.detailedData.deepSleep} min</span>
-                      </div>
-                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-purple-500 to-purple-400 rounded-full"
-                          style={{ width: `${((record.detailedData?.deepSleep || 0) / 120) * 100}%` }}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-blue-400">💤 REM</span>
-                        <span className="text-white">{record.detailedData?.remSleep || 0} min</span>
-                      </div>
-                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
-                          style={{ width: `${((record.detailedData?.remSleep || 0) / 120) * 100}%` }}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-cyan-400">☁️ Light</span>
-                        <span className="text-white">{record.detailedData?.lightSleep || 0} min</span>
-                      </div>
-                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full"
-                          style={{ width: `${((record.detailedData?.lightSleep || 0) / 240) * 100}%` }}
-                        />
-                      </div>
-                      
-                      {/* Efficiency */}
-                      <div className="flex items-center justify-between text-sm pt-2 border-t border-white/10">
-                        <span className="text-emerald-400">⚡ Efficiency</span>
-                        <span className="text-white font-semibold">{record.detailedData.efficiency}%</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Notes */}
-                  {record.notes && (
-                    <div className="mt-3 pt-3 border-t border-white/10">
-                      <p className="text-slate-400 text-xs italic">{record.notes}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            {/* Load More */}
-            {sleepRecords.length > 6 && (
-              <div className="mt-6 text-center">
-                <p className="text-slate-400 text-sm">
-                  {language === "ro" 
-                    ? `Afișare ${sleepRecords.length} înregistrări` 
-                    : `Showing ${sleepRecords.length} records`}
-                </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="mt-6 rounded-[28px] bg-slate-50 p-5 text-sm leading-7 text-slate-600">
+                {language === "ro"
+                  ? "Când salvezi primul screenshot, aici apare noaptea cea mai recentă cu orele exacte și distribuția stadiilor."
+                  : "Once you save the first screenshot, this section will show the latest night with exact times and stage distribution."}
               </div>
             )}
           </div>
-        )}
-        
-        {/* Empty State */}
-        {sleepRecords.length === 0 && (
-          <div className="mt-8 text-center py-12">
-            <div className="text-6xl mb-4">😴</div>
-            <h3 className="text-white text-xl font-semibold mb-2">
-              {language === "ro" ? "Încă nu ai date de somn" : "No sleep data yet"}
-            </h3>
-            <p className="text-slate-400 mb-6">
-              {language === "ro" 
-                ? "Importă un screenshot din Apple Health sau Samsung Health pentru a începe" 
-                : "Import a screenshot from Apple Health or Samsung Health to get started"}
+
+          <div className="ethos-panel rounded-[36px] p-6 sm:p-7">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+              {language === "ro" ? "Sleep coaching" : "Sleep coaching"}
             </p>
+            <h2 className="ethos-display mt-3 text-4xl font-semibold text-slate-900">
+              {language === "ro" ? "Cum dormi mai bine" : "How to sleep better"}
+            </h2>
+
+            {insights.length > 0 ? (
+              <div className="mt-6 space-y-3">
+                {insights.map((insight) => (
+                  <div key={insight.title} className={`rounded-[28px] border p-4 ${getInsightStyles(insight.tone)}`}>
+                    <p className="font-semibold text-slate-900">{insight.title}</p>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">{insight.description}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-600">
+                {language === "ro"
+                  ? "Recomandările apar după ce ai măcar o noapte salvată."
+                  : "Recommendations appear after you have at least one saved night."}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 ethos-panel rounded-[36px] p-6 sm:p-7">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+              {language === "ro" ? "Istoric recent" : "Recent history"}
+            </p>
+            <h2 className="ethos-display mt-3 text-4xl font-semibold text-slate-900">
+              {language === "ro" ? "Ultimele nopți" : "Recent nights"}
+            </h2>
+          </div>
+          <p className="text-sm text-slate-500">
+            {language === "ro"
+              ? `${recentRecords.length} nopți disponibile`
+              : `${recentRecords.length} nights available`}
+          </p>
+        </div>
+
+        {recentRecords.length > 0 ? (
+          <div className="mt-6 space-y-3">
+            {recentRecords.map((record) => (
+              <div key={record.id} className="rounded-[28px] border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-900">{formatDateLabel(record.dateKey, language)}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {record.asleepTime || "--:--"} → {record.awakeTime || "--:--"} • {record.sourceApp}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        {language === "ro" ? "Sleep" : "Sleep"}
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">{formatSleepHours(record.sleepHours)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Deep</p>
+                      <p className="mt-1 font-semibold text-slate-900">{record.stages.deepMinutes}m</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-400">REM</p>
+                      <p className="mt-1 font-semibold text-slate-900">{record.stages.remMinutes}m</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        {language === "ro" ? "Eff." : "Eff."}
+                      </p>
+                      <p className="mt-1 font-semibold text-slate-900">{record.efficiency}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-600">
+            {language === "ro"
+              ? "Nu există încă istoric. Primul screenshot salvat va porni recomandările."
+              : "There is no history yet. The first saved screenshot will start your recommendations."}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
