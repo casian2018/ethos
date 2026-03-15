@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, addDoc, collection, query, where, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
+import { doc, getDoc, addDoc, collection, query, where, limit, getDocs, Timestamp } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
 

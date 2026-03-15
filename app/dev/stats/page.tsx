@@ -7,7 +7,6 @@ import {
   collection, 
   query, 
   where, 
-  orderBy, 
   limit, 
   getDocs,
   Timestamp
@@ -37,7 +36,7 @@ export default function StatsDashboardPage() {
     activeMinutes: 0
   });
   const [streak, setStreak] = useState(0);
-  const [userId, setUserId] = useState<string>("");
+  const [_userId, setUserId] = useState<string>("");
 
   async function loadStats(uid: string) {
     // Load health stats - query without orderBy to avoid index requirement

@@ -45,7 +45,7 @@ interface WorkoutSession {
 }
 
 export default function WorkoutHistoryPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const [_user, setUser] = useState<User | null>(null);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({

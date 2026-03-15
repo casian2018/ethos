@@ -19,6 +19,24 @@ import { useLanguage } from "@/components/LanguageContext";
 const auth = firebaseAuth!;
 const db = firebaseDb!;
 
+// Interface for parsed sleep data from OCR
+interface ParsedSleepData {
+  date: string;
+  asleepTime: string;
+  awakeTime: string;
+  deepSleep: number;
+  lightSleep: number;
+  remSleep: number;
+  awakeDuration: number;
+  efficiency: number;
+}
+
+// Type for Tesseract logger messages
+interface TesseractLogger {
+  status: string;
+  progress: number;
+}
+
 // Extended interface for detailed sleep data
 interface SleepRecord {
   id: string;
@@ -179,7 +197,7 @@ export default function SleepAnalysisPage() {
       
       // Perform OCR on the image
       const result = await Tesseract.recognize(selectedImage, 'eng', {
-        logger: (m: any) => console.log(m)
+        logger: (m: TesseractLogger) => console.log(m)
       });
       
       // Extract text from result
@@ -205,7 +223,7 @@ export default function SleepAnalysisPage() {
   };
 
   // Parse OCR text into structured data
-  const parseSleepData = (text: string): any => {
+  const parseSleepData = (text: string): ParsedSleepData => {
     // Default values
     const data = {
       date: new Date().toISOString().split("T")[0],
@@ -269,11 +287,11 @@ export default function SleepAnalysisPage() {
   };
 
   // Calculate creative analysis based on sleep data
-  const calculateCreativeAnalysis = (sleepData: any) => {
+  const calculateCreativeAnalysis = (sleepData: ParsedSleepData) => {
     // Parse asleep time to get hours
     const asleepParts = sleepData.asleepTime.split(':');
     const asleepHour = parseInt(asleepParts[0]);
-    const asleepMinutes = parseInt(asleepParts[1]);
+    parseInt(asleepParts[1]);
     const totalSleepMinutes = sleepData.deepSleep + sleepData.lightSleep + sleepData.remSleep;
     const sleepHours = totalSleepMinutes / 60;
     
@@ -357,7 +375,7 @@ export default function SleepAnalysisPage() {
   };
 
   // Generate personalized tips using Gemini
-  const generatePersonalizedTips = async (sleepData: any) => {
+  const generatePersonalizedTips = async (sleepData: ParsedSleepData) => {
     if (!userProfile) return;
     
     setGeneratingTips(true);
@@ -968,7 +986,7 @@ Return EXACTLY in this JSON format (no other text):
                       {record.creativeAnalysis.whyThen}
                     </p>
                     <p className="text-zinc-600 dark:text-zinc-300 italic">
-                      "{record.creativeAnalysis.sleepCourse}"
+                      &quot;{record.creativeAnalysis.sleepCourse}&quot;
                     </p>
                   </div>
                 </div>

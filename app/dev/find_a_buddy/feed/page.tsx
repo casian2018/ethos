@@ -29,9 +29,6 @@ import {
   AvailabilitySlot, 
   sportTypeLabels, 
   genderPreferenceLabels,
-  SlotStatus,
-  SportType,
-  GenderPreference,
   preferredSportsList,
   createSlotChat
 } from "@/lib/types";

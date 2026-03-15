@@ -32,10 +32,8 @@ import {
   PreferredSport,
   Venue,
   DayOfWeek,
-  TimeSlot,
   getVenuesByCityAndSport,
   calculateAvailabilityOverlap,
-  hasSufficientTimeOverlap,
   UserAvailability,
   calculateAge
 } from "@/lib/types";
@@ -73,7 +71,7 @@ interface BuddyUser {
 export default function FindBuddyPage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const [user, setUser] = useState<User | null>(null);
+  const [_user, setUser] = useState<User | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<BuddyUser | null>(null);
   const [buddies, setBuddies] = useState<BuddyUser[]>([]);
   const [loading, setLoading] = useState(true);

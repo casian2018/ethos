@@ -23,10 +23,6 @@ import {
   collection, 
   addDoc, 
   updateDoc, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot,
   serverTimestamp,
   Timestamp,
   QueryDocumentSnapshot
@@ -67,7 +63,7 @@ interface WorkoutSession {
 export default function WorkoutSessionPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params);
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [_user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [exercises, setExercises] = useState<SessionExercise[]>([]);
   const [completedSets, setCompletedSets] = useState<Record<string, SetLog[]>>({});
@@ -92,6 +88,7 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
       loadSession(currentUser.uid);
     });
     return () => unsubscribe();
+   
   }, [sessionId, router]);
 
   // Rest timer countdown

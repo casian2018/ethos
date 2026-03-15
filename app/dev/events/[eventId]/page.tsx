@@ -18,9 +18,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { 
   collection, 
   query, 
-  getDocs,
   addDoc,
-  where,
   orderBy,
   limit,
   doc,
@@ -30,8 +28,7 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
-import { useLanguage } from "@/components/LanguageContext";
-import { 
+import {  
   SportEvent, 
   SportType, 
   GenderPreference,
@@ -46,7 +43,6 @@ const db = firebaseDb!;
 export default function EventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params);
   const router = useRouter();
-  const { language } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [event, setEvent] = useState<SportEvent | null>(null);
   const [messages, setMessages] = useState<EventChatMessage[]>([]);
@@ -64,9 +60,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
       loadEvent(currentUser.uid);
     });
     return () => unsubscribe();
+   
   }, [eventId, router]);
 
-  const loadEvent = async (currentUserId: string) => {
+  const loadEvent = async (_: string) => {
     try {
       // Get event
       const eventDoc = await getDoc(doc(db, "sport_events", eventId));

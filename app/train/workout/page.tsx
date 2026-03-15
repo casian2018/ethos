@@ -14,7 +14,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, addDoc, collection, query, where, limit, getDocs, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 
 const auth = firebaseAuth!;
@@ -333,7 +333,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
       {/* Progress Indicator */}
       {step !== "generating" && step !== "result" && (
         <div className="flex items-center justify-center gap-2 mb-8">
-          {["type", "intensity", "duration"].map((s, i) => {
+          {["type", "intensity", "duration"].map((s) => {
             const stepOrder = ["type", "intensity", "duration"];
             const isActive = step === s;
             const isPast = stepOrder.indexOf(step) > stepOrder.indexOf(s);
@@ -396,7 +396,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
       {step === "intensity" && (
         <div className="card p-6 animate-fade-in">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6 text-center">
-            What's your intensity level?
+            What&apos;s your intensity level?
           </h2>
           <div className="space-y-3">
             {[

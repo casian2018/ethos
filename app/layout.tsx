@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import AppShell from "@/components/AppShell";
+import { LanguageProvider } from "@/lib/contexts/LanguageContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -21,11 +21,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased bg-zinc-50/50 text-zinc-900">
-        <AppShell>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body className="font-sans antialiased min-h-screen bg-background">
+        <LanguageProvider>
+          {/* No Sidebar on landing page and auth pages */}
           {children}
-        </AppShell>
+        </LanguageProvider>
       </body>
     </html>
   );

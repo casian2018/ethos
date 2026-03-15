@@ -11,7 +11,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, getCountFromServer, collection, query, where } from "firebase/firestore";
+import { doc, getDoc, getCountFromServer, collection, query } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
 
@@ -29,8 +29,8 @@ interface UserProfile {
 export default function MainPage() {
   const router = useRouter();
   const { t } = useLanguage();
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [_user, setUser] = useState<User | null>(null);
+  const [_profile, setProfile] = useState<UserProfile | null>(null);
   const [postCount, setPostCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -109,7 +109,7 @@ export default function MainPage() {
       {/* Today's Workout Card */}
       <section className="card p-6 mb-6">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
-          Today's Workout
+          Today&apos;s Workout
         </h2>
         <div className="text-center py-8">
           <p className="text-zinc-500 dark:text-zinc-400 mb-4">

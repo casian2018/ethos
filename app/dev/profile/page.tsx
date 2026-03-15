@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
-import { AvailabilitySlot, sportTypeLabels } from "@/lib/types";
 import ScheduledWorkoutsSection from "@/components/ScheduledWorkoutsSection";
 
 const auth = firebaseAuth!;

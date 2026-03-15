@@ -4,7 +4,8 @@
  * TypeScript definitions for user profiles and related data.
  */
 
-import { Timestamp, Firestore } from "firebase/firestore";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { Firestore } from "firebase/firestore";
 
 // ==================== Medical Conditions ====================
 

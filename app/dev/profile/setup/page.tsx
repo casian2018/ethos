@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
@@ -72,7 +72,7 @@ const TOTAL_STEPS = 11;
 
 export default function ProfileSetupPage() {
   const router = useRouter();
-  const { t } = useLanguage();
+  useLanguage();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -228,7 +228,7 @@ export default function ProfileSetupPage() {
           {step === 1 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                Let's get to know you
+                Let&apos;s get to know you
               </h1>
               <p className="text-zinc-600 dark:text-zinc-400 mb-6">
                 This helps us create workouts that are safe and effective for your body.
@@ -350,7 +350,7 @@ export default function ProfileSetupPage() {
           {step === 3 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                What's your training experience?
+                What&apos;s your training experience?
               </h1>
               <p className="text-zinc-600 dark:text-zinc-400 mb-6">
                 This helps us match exercises to your fitness level.
@@ -583,7 +583,7 @@ export default function ProfileSetupPage() {
                 How much time can you commit?
               </h1>
               <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                We'll design a plan that fits your schedule.
+                We&apos;ll design a plan that fits your schedule.
               </p>
               
               <div className="mb-6">
@@ -690,7 +690,7 @@ export default function ProfileSetupPage() {
           {step === 8 && (
             <>
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                What's your current activity level?
+                What&apos;s your current activity level?
               </h1>
               <p className="text-zinc-600 dark:text-zinc-400 mb-6">
                 This helps us gauge your baseline fitness.
@@ -802,7 +802,7 @@ export default function ProfileSetupPage() {
                 What motivates you?
               </h1>
               <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                We'll tailor your experience to keep you engaged.
+                We&apos;ll tailor your experience to keep you engaged.
               </p>
               
               <div className="space-y-3">
@@ -842,7 +842,7 @@ export default function ProfileSetupPage() {
                   />
                   <div>
                     <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                      I'm looking for a workout buddy
+                      I&apos;m looking for a workout buddy
                     </span>
                     <p className="text-sm text-zinc-500">
                       Get matched with people in your area

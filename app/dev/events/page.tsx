@@ -21,10 +21,7 @@ import {
   where,
   orderBy,
   limit,
-  doc,
-  updateDoc,
-  serverTimestamp,
-  onSnapshot
+  serverTimestamp
 } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
@@ -33,8 +30,7 @@ import {
   SportType, 
   GenderPreference,
   sportTypeLabels,
-  genderPreferenceLabels,
-  EventChatMessage
+  genderPreferenceLabels
 } from "@/lib/types";
 
 const auth = firebaseAuth!;

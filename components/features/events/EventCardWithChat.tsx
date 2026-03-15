@@ -13,7 +13,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { 
   doc, 

@@ -13,7 +13,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { 
@@ -31,9 +30,7 @@ import { useLanguage } from "@/components/LanguageContext";
 import { 
   SportEvent, 
   SportType, 
-  GenderPreference,
-  sportTypeLabels,
-  genderPreferenceLabels
+  sportTypeLabels
 } from "@/lib/types";
 
 const auth = firebaseAuth!;
@@ -67,9 +64,8 @@ const days = [
 ];
 
 export default function FindABuddyFeedPage() {
-  const router = useRouter();
   const { language } = useLanguage();
-  const [user, setUser] = useState<User | null>(null);
+  const [_user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<SportEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [userCity, setUserCity] = useState<string>("");
@@ -285,21 +281,6 @@ export default function FindABuddyFeedPage() {
       return true;
     });
   }, [events, filterCity, filterSport, filterGender, filterDay, filterTimeStart, filterTimeEnd]);
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("ro-RO", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    });
-  };
-
-  const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString("ro-RO", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
