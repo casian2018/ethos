@@ -1,38 +1,41 @@
-/**
- * Dashboard - Ethos Main Hub
- * 
- * Features:
- * - Bento Box Grid Layout
- * - 3 Main Widgets: Next Workout, Quick Stats, Community
- * - FAB Quick Action Menu
- * - Theme-synced charts
- */
-
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { 
-  doc, 
-  getDoc, 
-  getDocs, 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
   limit,
-  Timestamp 
+  orderBy,
+  query,
+  Timestamp,
+  where,
 } from "firebase/firestore";
+import {
+  Activity,
+  Apple,
+  ArrowRight,
+  Clock3,
+  MapPin,
+  MessageCircle,
+  MoonStar,
+  ShieldAlert,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { isFutureSlot, normalizeFindBuddySlot, type FindBuddySlot } from "@/lib/findBuddy";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
 
-// Types
 interface UserProfile {
+  displayName?: string;
   city?: string;
   age?: number;
   height?: number;
@@ -42,22 +45,6 @@ interface UserProfile {
   goals?: string[];
   medicalConditions?: string[];
   preferredSports?: string[];
-}
-
-interface AvailabilitySlot {
-  id: string;
-  hostId: string;
-  hostName: string;
-  sportType: string;
-  city: string;
-  dateTime: Timestamp;
-  duration: number;
-  location: {
-    name: string;
-    isPaid: boolean;
-  };
-  status: string;
-  buddyId: string | null;
 }
 
 interface ForumPost {
@@ -88,7 +75,6 @@ interface SleepRecord {
   chronotype: string;
 }
 
-// Sport emoji map
 const sportEmojis: Record<string, string> = {
   gym: "🏋️",
   running: "🏃",
@@ -98,119 +84,87 @@ const sportEmojis: Record<string, string> = {
   yoga: "🧘",
   cycling: "🚴",
   basketball: "🏀",
-  hiking: "🥾",
-  boxing: "🥊",
+  volleyball: "🏐",
 };
 
-// Helper function to format workout date
-const formatWorkoutDate = (dateTime: Timestamp | null, lang: string) => {
-  if (!dateTime) return "";
+function formatWorkoutDate(dateTime: Date | Timestamp | null, lang: string): string {
+  if (!dateTime) {
+    return "";
+  }
+
   try {
-    const date = dateTime.toDate();
-    const options: Intl.DateTimeFormatOptions = { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    };
-    return date.toLocaleDateString(lang === 'ro' ? 'ro-RO' : 'en-US', options);
+    const date = dateTime instanceof Date ? dateTime : dateTime.toDate();
+    return date.toLocaleDateString(lang === "ro" ? "ro-RO" : "en-US", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
     return "";
   }
-};
+}
 
 export default function MainPage() {
   const router = useRouter();
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  
-  // Widget Data
-  const [nextWorkout, setNextWorkout] = useState<AvailabilitySlot | null>(null);
+  const [nextWorkout, setNextWorkout] = useState<FindBuddySlot | null>(null);
   const [recentPosts, setRecentPosts] = useState<ForumPost[]>([]);
-  const [todayStats, setTodayStats] = useState<{ steps: number; sleep: number }>({ steps: 0, sleep: 0 });
-  
-  // FAB Menu State
+  const [todayStats, setTodayStats] = useState({ steps: 0, sleep: 0 });
   const [fabOpen, setFabOpen] = useState(false);
 
-  // Fetch next workout
   const fetchNextWorkout = async (uid: string) => {
     try {
-      const slotsQuery = query(
-        collection(db, "availability_slots"),
-        where("buddyId", "==", uid),
-        where("status", "==", "matched"),
-        orderBy("dateTime", "asc"),
-        limit(1)
-      );
-      
-      const slotsSnapshot = await getDocs(slotsQuery);
-      if (!slotsSnapshot.empty) {
-        const slotData = slotsSnapshot.docs[0].data() as AvailabilitySlot;
-        setNextWorkout({ ...slotData, id: slotsSnapshot.docs[0].id });
-      }
-    } catch (err) {
-      console.error("Error fetching next workout:", err);
+      const slotsSnapshot = await getDocs(query(collection(db, "availability_slots"), orderBy("dateTime", "asc")));
+      const nextSlot =
+        slotsSnapshot.docs
+          .map((slotDoc) => normalizeFindBuddySlot(slotDoc.id, slotDoc.data() as Record<string, unknown>))
+          .filter((slot) => isFutureSlot(slot))
+          .filter((slot) => slot.hostId === uid || slot.participants.includes(uid))
+          .sort((left, right) => left.dateTime.getTime() - right.dateTime.getTime())[0] || null;
+
+      setNextWorkout(nextSlot);
+    } catch (error) {
+      console.error("Error fetching next workout:", error);
     }
   };
 
-  // Fetch recent posts
   const fetchRecentPosts = async () => {
     try {
-      const postsQuery = query(
-        collection(db, "forum_posts"),
-        orderBy("createdAt", "desc"),
-        limit(3)
+      const postsSnapshot = await getDocs(
+        query(collection(db, "forum_posts"), orderBy("createdAt", "desc"), limit(3))
       );
-      
-      const postsSnapshot = await getDocs(postsQuery);
-      const posts = postsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ForumPost[];
-      setRecentPosts(posts);
-    } catch (err) {
-      console.error("Error fetching posts:", err);
+
+      setRecentPosts(
+        postsSnapshot.docs.map((postDoc) => ({
+          id: postDoc.id,
+          ...postDoc.data(),
+        })) as ForumPost[]
+      );
+    } catch (error) {
+      console.error("Error fetching posts:", error);
     }
   };
 
-  // Fetch today's stats
   const fetchTodayStats = async (uid: string) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const healthQuery = query(
-        collection(db, "users", uid, "health_stats"),
-        where("date", "==", today),
-        limit(1)
+      const today = new Date().toISOString().split("T")[0];
+      const healthSnapshot = await getDocs(
+        query(collection(db, "users", uid, "health_stats"), where("date", "==", today), limit(1))
       );
-      const healthSnapshot = await getDocs(healthQuery);
-      
-      const sleepQuery = query(
-        collection(db, "users", uid, "sleep_records"),
-        where("date", "==", today),
-        limit(1)
+      const sleepSnapshot = await getDocs(
+        query(collection(db, "users", uid, "sleep_records"), where("date", "==", today), limit(1))
       );
-      const sleepSnapshot = await getDocs(sleepQuery);
-      
-      let steps = 0;
-      let sleep = 0;
-      
-      if (!healthSnapshot.empty) {
-        const stat = healthSnapshot.docs[0].data() as HealthStat;
-        steps = stat.steps || 0;
-      }
-      
-      if (!sleepSnapshot.empty) {
-        const sleepData = sleepSnapshot.docs[0].data() as SleepRecord;
-        sleep = sleepData.sleepHours || 0;
-      }
-      
+
+      const steps = healthSnapshot.empty ? 0 : ((healthSnapshot.docs[0]?.data() as HealthStat).steps || 0);
+      const sleep = sleepSnapshot.empty ? 0 : ((sleepSnapshot.docs[0]?.data() as SleepRecord).sleepHours || 0);
+
       setTodayStats({ steps, sleep });
-    } catch (err) {
-      console.error("Error fetching stats:", err);
+    } catch (error) {
+      console.error("Error fetching stats:", error);
     }
   };
 
@@ -220,29 +174,23 @@ export default function MainPage() {
         router.push("/auth");
         return;
       }
-      setUserId(currentUser.uid);
 
       try {
-        // Fetch user profile
         const profileDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (profileDoc.exists()) {
           setProfile(profileDoc.data() as UserProfile);
         }
 
-        // Fetch next confirmed workout (where user is buddy)
-        await fetchNextWorkout(currentUser.uid);
-
-        // Fetch recent forum posts
-        await fetchRecentPosts();
-
-        // Fetch today's stats
-        await fetchTodayStats(currentUser.uid);
-
-      } catch (err) {
-        console.error("Error loading dashboard data:", err);
+        await Promise.all([
+          fetchNextWorkout(currentUser.uid),
+          fetchRecentPosts(),
+          fetchTodayStats(currentUser.uid),
+        ]);
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -250,298 +198,358 @@ export default function MainPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <div className="ethos-panel rounded-[32px] px-10 py-10 text-center">
+          <div className="animate-ethos-float mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-500 to-emerald-500 text-white">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <h1 className="ethos-display mt-5 text-4xl font-semibold text-slate-900">Preparing your dashboard</h1>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-slate-50 pb-24">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-4">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {language === "ro" ? "Bine ai venit" : "Welcome back"} 👋
-          </h1>
-          <p className="text-slate-500 text-sm">
-            {language === "ro" ? "Iată ce ai pentru azi" : "Here's your day at a glance"}
-          </p>
-        </div>
-      </header>
+  const stepsProgress = Math.min((todayStats.steps / 10000) * 100, 100);
+  const sleepProgress = Math.min((todayStats.sleep / 8) * 100, 100);
+  const displayName =
+    profile?.displayName ||
+    (language === "ro" ? "sportivule" : "athlete");
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Bento Box Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[minmax(180px,auto)]">
-          
-          {/* Widget 1: Next Workout (Takes 2 columns on md+) */}
-          <div className="md:col-span-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <span>🏋️</span>
-                {language === "ro" ? "Următorul Antrenament" : "Next Workout"}
-              </h2>
-              <Link href="/dev/find_a_buddy/feed" className="text-white/80 text-sm hover:text-white">
-                {language === "ro" ? "Vezi toate" : "See all"} →
+  return (
+    <div className="pb-24">
+      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="ethos-panel rounded-[38px] p-6 sm:p-8">
+          <div className="ethos-kicker">
+            <Sparkles className="h-3.5 w-3.5" />
+            {language === "ro" ? "Hub personal" : "Personal hub"}
+          </div>
+          <h1 className="ethos-section-title mt-6 text-slate-900">
+            {language === "ro" ? "Bine ai revenit," : "Welcome back,"} {displayName}
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
+            {language === "ro"
+              ? "Aici vezi rapid ce urmează, cum stai cu pașii și somnul, plus ce se mișcă în comunitate."
+              : "See what is next, how your steps and sleep are doing, and what is moving in the community."}
+          </p>
+
+          <div className="mt-8 flex flex-wrap gap-2">
+            {profile?.city && <span className="ethos-chip">📍 {profile.city}</span>}
+            {(profile?.preferredSports || []).slice(0, 2).map((sport) => (
+              <span key={sport} className="ethos-chip">
+                {sportEmojis[sport] || "✨"} {sport}
+              </span>
+            ))}
+            {(profile?.goals || []).slice(0, 2).map((goal) => (
+              <span key={goal} className="ethos-chip">
+                🎯 {goal}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/dev/train/workout"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(240,116,62,0.22)] transition hover:-translate-y-0.5 hover:bg-primary/90"
+            >
+              {language === "ro" ? "Generează workout" : "Generate workout"}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/dev/find_a_buddy/feed"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white"
+            >
+              {language === "ro" ? "Intră în find a buddy" : "Open find a buddy"}
+            </Link>
+          </div>
+        </div>
+
+        <div className="rounded-[38px] bg-gradient-to-br from-[#12211f] via-[#17332f] to-[#f0743e] p-6 text-white shadow-[0_28px_64px_rgba(17,31,30,0.18)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">
+            {language === "ro" ? "Cadru de azi" : "Today frame"}
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="rounded-[28px] border border-white/10 bg-white/8 p-5 backdrop-blur">
+              <div className="flex items-center gap-3">
+                <Activity className="h-5 w-5 text-white/75" />
+                <p className="text-sm text-white/70">{language === "ro" ? "Mișcare" : "Movement"}</p>
+              </div>
+              <p className="mt-4 text-4xl font-semibold">{todayStats.steps.toLocaleString()}</p>
+              <p className="mt-1 text-sm text-white/70">/ 10,000 {language === "ro" ? "pași" : "steps"}</p>
+            </div>
+            <div className="rounded-[28px] border border-white/10 bg-white/8 p-5 backdrop-blur">
+              <div className="flex items-center gap-3">
+                <MoonStar className="h-5 w-5 text-white/75" />
+                <p className="text-sm text-white/70">{language === "ro" ? "Recovery" : "Recovery"}</p>
+              </div>
+              <p className="mt-4 text-4xl font-semibold">{todayStats.sleep}h</p>
+              <p className="mt-1 text-sm text-white/70">/ 8h {language === "ro" ? "somn recomandat" : "recommended sleep"}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-6">
+          <div className="ethos-panel rounded-[36px] p-6 sm:p-7">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  {language === "ro" ? "Următorul moment" : "Next moment"}
+                </p>
+                <h2 className="ethos-display mt-3 text-4xl font-semibold text-slate-900">
+                  {language === "ro" ? "Sesiunea următoare" : "Upcoming session"}
+                </h2>
+              </div>
+              <Link
+                href="/dev/find_a_buddy/feed"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-orange-600 hover:text-orange-700"
+              >
+                {language === "ro" ? "Vezi toate sesiunile" : "View all sessions"}
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-            
+
             {nextWorkout ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-4xl">{sportEmojis[nextWorkout.sportType] || "🏋️"}</span>
-                  <div>
-                    <p className="text-2xl font-bold capitalize">{nextWorkout.sportType}</p>
-                    <p className="text-emerald-100">{nextWorkout.location.name}</p>
+              <div className="mt-6 rounded-[30px] bg-gradient-to-br from-emerald-500 to-[#12211f] p-6 text-white shadow-[0_20px_46px_rgba(40,90,70,0.22)]">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-white/12 text-4xl backdrop-blur">
+                      {sportEmojis[nextWorkout.sportType] || "🏋️"}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">
+                        {language === "ro" ? "Antrenament programat" : "Scheduled workout"}
+                      </p>
+                      <h3 className="mt-2 text-3xl font-semibold capitalize">{nextWorkout.sportType}</h3>
+                      <p className="mt-2 text-sm text-white/75">{nextWorkout.hostName}</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-white/12 px-4 py-2 text-sm font-semibold">
+                    {nextWorkout.participants.length}/{nextWorkout.maxParticipants}
+                  </span>
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm text-white/70">
+                      <Clock3 className="h-4 w-4" />
+                      {language === "ro" ? "Când" : "When"}
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-white">
+                      {formatWorkoutDate(nextWorkout.dateTime, language)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm text-white/70">
+                      <MapPin className="h-4 w-4" />
+                      {language === "ro" ? "Unde" : "Where"}
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-white">{nextWorkout.location.name}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm text-white/70">
+                      <Users className="h-4 w-4" />
+                      {language === "ro" ? "Durată" : "Duration"}
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-white">{nextWorkout.duration} min</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="bg-white/20 px-3 py-1 rounded-full">
-                    📅 {formatWorkoutDate(nextWorkout.dateTime, language)}
-                  </span>
-                  <span className="bg-white/20 px-3 py-1 rounded-full">
-                    ⏱️ {nextWorkout.duration} min
-                  </span>
-                </div>
-                <p className="text-sm text-emerald-100">
-                  🎯 {language === "ro" ? "Antrenor" : "Host"}: {nextWorkout.hostName}
-                </p>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full py-8">
-                <p className="text-emerald-100 mb-4 text-center">
-                  {language === "ro" 
-                    ? "Nu ai niciun antrenament programat"
-                    : "No workouts scheduled"}
+              <div className="mt-6 rounded-[30px] border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                <p className="text-lg font-semibold text-slate-900">
+                  {language === "ro" ? "Nu ai încă sesiuni programate" : "No sessions scheduled yet"}
                 </p>
-                <Link 
-                  href="/dev/find_a_buddy" 
-                  className="bg-white text-emerald-600 px-6 py-2.5 rounded-full font-medium hover:bg-emerald-50 transition-colors"
-                >
-                  {language === "ro" ? "Găsește un partener" : "Find a partner"}
-                </Link>
+                <p className="mt-3 text-sm leading-7 text-slate-500">
+                  {language === "ro"
+                    ? "Intră în feed și alătură-te unei sesiuni sau publică una nouă."
+                    : "Open the feed to join a session or publish a new one."}
+                </p>
               </div>
             )}
           </div>
 
-          {/* Widget 2: Quick Stats */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <span>📊</span>
-              {language === "ro" ? "Statistici" : "Quick Stats"}
-            </h2>
-            
-            {/* Steps Chart (Simple CSS Bar) */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-slate-500">👟 {language === "ro" ? "Pași" : "Steps"}</span>
-                <span className="font-semibold text-slate-900">{todayStats.steps.toLocaleString()}</span>
+          <div className="ethos-panel rounded-[36px] p-6 sm:p-7">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  {language === "ro" ? "Comunitate" : "Community"}
+                </p>
+                <h2 className="ethos-display mt-3 text-4xl font-semibold text-slate-900">
+                  {language === "ro" ? "Discuții recente" : "Recent discussions"}
+                </h2>
               </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((todayStats.steps / 10000) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-slate-400 mt-1">Goal: 10,000</p>
-            </div>
-            
-            {/* Sleep Chart (Simple CSS Bar) */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-slate-500">😴 {language === "ro" ? "Somn" : "Sleep"}</span>
-                <span className="font-semibold text-slate-900">{todayStats.sleep}h</span>
-              </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-purple-400 to-purple-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((todayStats.sleep / 8) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-slate-400 mt-1">Goal: 8h</p>
-            </div>
-            
-            {/* Mini Stats Grid */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-              <Link href="/dev/stats" className="text-center p-2 hover:bg-slate-50 rounded-lg transition-colors">
-                <p className="text-xs text-slate-500">{language === "ro" ? "Vezi toate" : "See all"}</p>
-                <p className="text-emerald-600 font-medium">→</p>
-              </Link>
-              <Link href="/dev/sleep-analysis" className="text-center p-2 hover:bg-slate-50 rounded-lg transition-colors">
-                <p className="text-xs text-slate-500">{language === "ro" ? "Analiză somn" : "Sleep analysis"}</p>
-                <p className="text-purple-600 font-medium">→</p>
+              <Link
+                href="/dev/forum"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-orange-600 hover:text-orange-700"
+              >
+                {language === "ro" ? "Forum" : "Forum"}
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-          </div>
 
-          {/* Widget 3: Community (Takes 2 columns) */}
-          <div className="md:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                <span>💬</span>
-                {language === "ro" ? "Comunitate" : "Community"}
-              </h2>
-              <Link href="/dev/forum" className="text-emerald-600 text-sm hover:text-emerald-700">
-                {language === "ro" ? "Vezi toate" : "See all"} →
-              </Link>
-            </div>
-            
-            {recentPosts.length > 0 ? (
-              <div className="space-y-3">
-                {recentPosts.map((post) => (
-                  <Link 
-                    key={post.id} 
+            <div className="mt-6 space-y-3">
+              {recentPosts.length > 0 ? (
+                recentPosts.map((post) => (
+                  <Link
+                    key={post.id}
                     href={`/dev/forum/${post.id}`}
-                    className="block p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+                    className="ethos-card-lift block rounded-[26px] border border-slate-200/80 bg-white/76 p-4"
                   >
                     <div className="flex items-start gap-3">
-                      <span className="text-xl">{sportEmojis[post.sport] || "💬"}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-900 truncate">{post.title}</p>
-                        <p className="text-sm text-slate-500">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-xl">
+                        {sportEmojis[post.sport] || "💬"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 font-semibold text-slate-900">{post.title}</p>
+                        <p className="mt-2 text-sm text-slate-500">
                           {post.category} • {post.authorName}
                         </p>
                       </div>
                     </div>
                   </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-slate-500 mb-4">
-                  {language === "ro" 
-                    ? "Nicio postare recentă"
-                    : "No recent posts"}
-                </p>
-                <Link 
-                  href="/dev/forum" 
-                  className="text-emerald-600 font-medium hover:text-emerald-700"
-                >
-                  {language === "ro" ? "Vezi forumul" : "Check the forum"}
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Widget 4: Quick Actions Preview */}
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-lg">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <span>⚡</span>
-              {language === "ro" ? "Acțiuni Rapide" : "Quick Actions"}
-            </h2>
-            
-            <div className="space-y-3">
-              <Link 
-                href="/dev/workout" 
-                className="flex items-center gap-3 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-colors"
-              >
-                <span className="text-2xl">✨</span>
-                <div>
-                  <p className="font-medium">{language === "ro" ? "Generează Workout" : "Generate Workout"}</p>
-                  <p className="text-xs text-slate-300">AI-powered</p>
+                ))
+              ) : (
+                <div className="rounded-[26px] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                  {language === "ro" ? "Încă nu există postări recente." : "There are no recent posts yet."}
                 </div>
-              </Link>
-              
-              <Link 
-                href="/dev/find_a_buddy" 
-                className="flex items-center gap-3 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-colors"
-              >
-                <span className="text-2xl">🤝</span>
-                <div>
-                  <p className="font-medium">{language === "ro" ? "Postează Disponibilitate" : "Post Availability"}</p>
-                  <p className="text-xs text-slate-300">{language === "ro" ? "Găsește parteneri" : "Find partners"}</p>
-                </div>
-              </Link>
-              
-              <Link 
-                href="/dev/sleep-analysis" 
-                className="flex items-center gap-3 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-colors"
-              >
-                <span className="text-2xl">🌙</span>
-                <div>
-                  <p className="font-medium">{language === "ro" ? "Log Somn" : "Log Sleep"}</p>
-                  <p className="text-xs text-slate-300">{language === "ro" ? "Track recovery" : "Track recovery"}</p>
-                </div>
-              </Link>
+              )}
             </div>
           </div>
-
         </div>
 
-        {/* Medical Warning (if applicable) */}
-        {profile?.medicalConditions && profile.medicalConditions.length > 0 && !profile.medicalConditions.includes("none") && (
-          <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">⚠️</span>
+        <div className="space-y-6">
+          <div className="ethos-panel rounded-[36px] p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+              {language === "ro" ? "Readiness" : "Readiness"}
+            </p>
+            <h2 className="ethos-display mt-3 text-4xl font-semibold text-slate-900">
+              {language === "ro" ? "Semnalele de azi" : "Signals for today"}
+            </h2>
+
+            <div className="mt-6 space-y-5">
               <div>
-                <p className="font-medium text-amber-900">
-                  {language === "ro" ? "Atenționare Medicală" : "Medical Warning"}
-                </p>
-                <p className="text-sm text-amber-700">
-                  {language === "ro" 
-                    ? `Antrenamentele tale sunt adaptate pentru: ${profile.medicalConditions.join(", ")}`
-                    : `Your workouts are adapted for: ${profile.medicalConditions.join(", ")}`}
-                </p>
+                <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
+                  <span>{language === "ro" ? "Pași" : "Steps"}</span>
+                  <span className="font-semibold text-slate-900">{todayStats.steps.toLocaleString()}</span>
+                </div>
+                <div className="h-3 rounded-full bg-slate-100">
+                  <div
+                    className="h-3 rounded-full bg-gradient-to-r from-emerald-500 to-orange-500"
+                    style={{ width: `${stepsProgress}%` }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
+                  <span>{language === "ro" ? "Somn" : "Sleep"}</span>
+                  <span className="font-semibold text-slate-900">{todayStats.sleep}h</span>
+                </div>
+                <div className="h-3 rounded-full bg-slate-100">
+                  <div
+                    className="h-3 rounded-full bg-gradient-to-r from-sky-500 to-emerald-500"
+                    style={{ width: `${sleepProgress}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* FAB Quick Action Menu */}
-      <div className="fixed bottom-6 right-6 z-50">
-        {/* FAB Menu Options */}
+          <div className="rounded-[36px] bg-slate-900 p-6 text-white shadow-[0_28px_64px_rgba(17,31,30,0.16)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/65">
+              {language === "ro" ? "Acțiuni rapide" : "Quick actions"}
+            </p>
+            <div className="mt-5 space-y-3">
+              {[
+                {
+                  href: "/dev/train/workout",
+                  label: language === "ro" ? "Generează workout" : "Generate workout",
+                  detail: "AI planning",
+                  icon: Sparkles,
+                },
+                {
+                  href: "/dev/nutrition",
+                  label: language === "ro" ? "Deschide nutrition" : "Open nutrition",
+                  detail: "Macros & meals",
+                  icon: Apple,
+                },
+                {
+                  href: "/dev/find_a_buddy",
+                  label: language === "ro" ? "Caută oameni" : "Find people",
+                  detail: "Live sessions",
+                  icon: Users,
+                },
+              ].map((action) => (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className="flex items-center justify-between rounded-[24px] bg-white/7 px-4 py-4 transition hover:bg-white/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
+                      <action.icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{action.label}</p>
+                      <p className="text-xs text-white/60">{action.detail}</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-white/70" />
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {profile?.medicalConditions &&
+            profile.medicalConditions.length > 0 &&
+            !profile.medicalConditions.includes("none") && (
+              <div className="rounded-[32px] border border-amber-200 bg-amber-50 p-5">
+                <div className="flex items-start gap-3">
+                  <ShieldAlert className="mt-0.5 h-5 w-5 text-amber-700" />
+                  <div>
+                    <p className="font-semibold text-amber-900">
+                      {language === "ro" ? "Atenționare medicală activă" : "Active medical flag"}
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-amber-800">
+                      {language === "ro"
+                        ? `Planurile tale sunt adaptate pentru: ${profile.medicalConditions.join(", ")}.`
+                        : `Your plans are adapted for: ${profile.medicalConditions.join(", ")}.`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+        </div>
+      </section>
+
+      <div className="fixed bottom-6 right-6 z-30">
         {fabOpen && (
-          <div className="absolute bottom-16 right-0 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <Link
-              href="/dev/find_a_buddy"
-              className="flex items-center gap-3 bg-white border border-slate-200 text-slate-900 px-4 py-3 rounded-xl shadow-lg hover:bg-slate-50 transition-colors"
-              onClick={() => setFabOpen(false)}
-            >
-              <span className="text-xl">🤝</span>
-              <span className="font-medium text-sm whitespace-nowrap">
-                {language === "ro" ? "Postează Disponibilitate" : "Post Availability"}
-              </span>
-            </Link>
-            
-            <Link
-              href="/dev/workout"
-              className="flex items-center gap-3 bg-white border border-slate-200 text-slate-900 px-4 py-3 rounded-xl shadow-lg hover:bg-slate-50 transition-colors"
-              onClick={() => setFabOpen(false)}
-            >
-              <span className="text-xl">✨</span>
-              <span className="font-medium text-sm whitespace-nowrap">
-                {language === "ro" ? "Generează Workout" : "Generate Workout"}
-              </span>
-            </Link>
-            
-            <Link
-              href="/dev/sleep-analysis"
-              className="flex items-center gap-3 bg-white border border-slate-200 text-slate-900 px-4 py-3 rounded-xl shadow-lg hover:bg-slate-50 transition-colors"
-              onClick={() => setFabOpen(false)}
-            >
-              <span className="text-xl">🌙</span>
-              <span className="font-medium text-sm whitespace-nowrap">
-                {language === "ro" ? "Log Somn" : "Log Sleep"}
-              </span>
-            </Link>
+          <div className="mb-3 space-y-2">
+            {[
+              { href: "/dev/find_a_buddy", label: language === "ro" ? "Postează slot" : "Create slot", icon: Users },
+              { href: "/dev/train/workout", label: language === "ro" ? "Workout nou" : "New workout", icon: Sparkles },
+              { href: "/dev/forum", label: language === "ro" ? "Discuție nouă" : "New discussion", icon: MessageCircle },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setFabOpen(false)}
+                className="ethos-panel flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700"
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            ))}
           </div>
         )}
-        
-        {/* FAB Button */}
+
         <button
-          onClick={() => setFabOpen(!fabOpen)}
-          className="w-14 h-14 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+          type="button"
+          onClick={() => setFabOpen((current) => !current)}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-[0_20px_40px_rgba(240,116,62,0.28)] transition hover:-translate-y-0.5 hover:bg-primary/90"
         >
-          {fabOpen ? (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          )}
+          {fabOpen ? "×" : "+"}
         </button>
       </div>
     </div>

@@ -1,202 +1,228 @@
-/**
- * MatchmakingCard - Modern session card for Find a Buddy
- */
-
 "use client";
 
-import { useState } from "react";
-import { Star, MapPin, Clock, Users } from "lucide-react";
+import { Clock3, MapPin, Shield, Users } from "lucide-react";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
-
-interface Host {
-  name: string;
-  avatar: string;
-  rating: number;
-}
 
 interface MatchmakingCardProps {
   title: string;
-  host: Host;
-  sport: string;
-  time: string;
-  date: string;
-  location: string;
+  subtitle?: string;
+  hostName: string;
+  hostLevel?: string;
+  sportLabel: string;
+  sportEmoji: string;
+  dateLabel: string;
+  timeLabel: string;
+  locationLabel: string;
+  cityLabel: string;
   currentPlayers: number;
   maxPlayers: number;
-  imageUrl?: string;
+  participantNames?: string[];
+  matchScore?: number | null;
+  modeLabel?: string;
+  genderPreferenceLabel?: string;
+  priceLabel?: string;
+  description?: string;
+  statusLabel?: string;
   featured?: boolean;
-  onJoin?: () => void;
-  slotId?: string;
+  actionLabel: string;
+  actionDisabled?: boolean;
+  actionLoading?: boolean;
+  onAction?: () => void;
+}
+
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return "ET";
+  }
+
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${words[0][0] || ""}${words[1][0] || ""}`.toUpperCase();
+}
+
+function getMatchScoreStyles(score?: number | null): string {
+  if (!score) {
+    return "bg-slate-100 text-slate-600";
+  }
+
+  if (score >= 90) {
+    return "bg-emerald-100 text-emerald-700";
+  }
+
+  if (score >= 80) {
+    return "bg-sky-100 text-sky-700";
+  }
+
+  if (score >= 70) {
+    return "bg-amber-100 text-amber-700";
+  }
+
+  return "bg-slate-100 text-slate-600";
 }
 
 export function MatchmakingCard({
   title,
-  host,
-  sport,
-  time,
-  date,
-  location,
+  subtitle,
+  hostName,
+  hostLevel,
+  sportLabel,
+  sportEmoji,
+  dateLabel,
+  timeLabel,
+  locationLabel,
+  cityLabel,
   currentPlayers,
   maxPlayers,
-  imageUrl,
+  participantNames = [],
+  matchScore,
+  modeLabel,
+  genderPreferenceLabel,
+  priceLabel,
+  description,
+  statusLabel,
   featured = false,
-  onJoin,
-  slotId,
+  actionLabel,
+  actionDisabled = false,
+  actionLoading = false,
+  onAction,
 }: MatchmakingCardProps) {
   const { language } = useLanguage();
-  const [isJoining, setIsJoining] = useState(false);
-  const spotsLeft = maxPlayers - currentPlayers;
-  
-  // Sport emoji mapping
-  const getSportEmoji = (sportName: string) => {
-    const emojis: Record<string, string> = {
-      gym: "🏋️",
-      running: "🏃",
-      swimming: "🏊",
-      football: "⚽",
-      tennis: "🎾",
-      basketball: "🏀",
-      cycling: "🚴",
-      yoga: "🧘",
-      hiking: "🥾",
-      boxing: "🥊",
-      volleyball: "🏐",
-    };
-    return emojis[sportName.toLowerCase()] || "🏃";
-  };
-
-  const handleJoin = async () => {
-    if (onJoin && slotId) {
-      setIsJoining(true);
-      try {
-        await onJoin();
-      } finally {
-        setIsJoining(false);
-      }
-    }
-  };
+  const spotsLeft = Math.max(maxPlayers - currentPlayers, 0);
+  const progress = maxPlayers > 0 ? Math.min((currentPlayers / maxPlayers) * 100, 100) : 0;
 
   return (
-    <div className={`group relative overflow-hidden rounded-3xl transition-all duration-300 hover:shadow-2xl ${featured ? 'bg-gradient-to-br from-amber-500/10 to-orange-500/10' : 'bg-white'}`}>
-      {/* Background Image */}
-      {imageUrl && (
-        <div className="absolute inset-0">
-          <img 
-            src={imageUrl} 
-            alt={sport}
-            className="w-full h-full object-cover opacity-10 group-hover:opacity-15 transition-opacity"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent" />
+    <article
+      className={`rounded-[28px] border bg-white p-6 shadow-lg transition ${
+        featured
+          ? "border-emerald-200 shadow-emerald-100/70"
+          : "border-slate-200 shadow-slate-200/50"
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-3xl">
+            {sportEmoji}
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+            <p className="mt-1 text-sm text-slate-500">{subtitle || sportLabel}</p>
+          </div>
         </div>
-      )}
 
-      <div className="relative p-6">
-        {/* Featured Badge */}
-        {featured && (
-          <div className="inline-flex items-center gap-1 px-3 py-1 bg-amber-500 text-white text-xs font-medium rounded-full mb-4">
-            <span className="animate-pulse">🔥</span>
-            {language === "ro" ? "Popular" : "Popular"}
+        {typeof matchScore === "number" && (
+          <div className={`rounded-full px-3 py-1 text-xs font-semibold ${getMatchScoreStyles(matchScore)}`}>
+            {matchScore}% {language === "ro" ? "compatibilitate" : "match"}
           </div>
         )}
-
-        {/* Sport & Title */}
-        <div className="flex items-start gap-4 mb-4">
-          <div className="text-4xl">{getSportEmoji(sport)}</div>
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-slate-900 mb-1">{title}</h3>
-            <p className="text-slate-500 text-sm">{sport}</p>
-          </div>
-        </div>
-
-        {/* Host Info */}
-        <div className="flex items-center gap-3 mb-4">
-          <img 
-            src={host.avatar} 
-            alt={host.name}
-            className="w-10 h-10 rounded-full object-cover"
-          />
-          <div className="flex-1">
-            <p className="font-medium text-slate-900">{host.name}</p>
-            <div className="flex items-center gap-1 text-amber-500">
-              <Star className="w-3 h-3 fill-current" />
-              <span className="text-xs font-medium">{host.rating}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Details */}
-        <div className="flex flex-wrap gap-3 mb-4">
-          <div className="flex items-center gap-1.5 text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full text-sm">
-            <Clock className="w-4 h-4" />
-            <span>{time}</span>
-            <span className="text-slate-400">•</span>
-            <span>{date}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full text-sm">
-            <MapPin className="w-4 h-4" />
-            <span className="truncate max-w-[120px]">{location}</span>
-          </div>
-        </div>
-
-        {/* Players & Join */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex -space-x-2">
-              {[...Array(Math.min(currentPlayers, 4))].map((_, i) => (
-                <div 
-                  key={i}
-                  className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 border-2 border-white flex items-center justify-center text-white text-xs font-medium"
-                >
-                  {String.fromCharCode(65 + i)}
-                </div>
-              ))}
-              {currentPlayers > 4 && (
-                <div className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-slate-600 text-xs font-medium">
-                  +{currentPlayers - 4}
-                </div>
-              )}
-            </div>
-            <div className="text-sm">
-              <span className="font-medium text-slate-900">{currentPlayers}</span>
-              <span className="text-slate-500">/{maxPlayers}</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleJoin}
-            disabled={isJoining || spotsLeft <= 0}
-            className={`px-6 py-2.5 rounded-xl font-semibold transition-all ${
-              spotsLeft <= 0
-                ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                : "bg-emerald-500 hover:bg-emerald-600 text-white hover:shadow-lg hover:shadow-emerald-500/25"
-            }`}
-          >
-            {isJoining ? (
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              </span>
-            ) : spotsLeft <= 0 ? (
-              language === "ro" ? "Full" : "Full"
-            ) : (
-              language === "ro" ? "Alătură-te" : "Join"
-            )}
-          </button>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-4 bg-slate-100 rounded-full h-1.5">
-          <div 
-            className="bg-emerald-500 h-1.5 rounded-full transition-all"
-            style={{ width: `${(currentPlayers / maxPlayers) * 100}%` }}
-          />
-        </div>
-        <p className="text-xs text-slate-500 mt-1">
-          {spotsLeft} {language === "ro" ? "locuri rămase" : "spots left"}
-        </p>
       </div>
-    </div>
+
+      <div className="mt-5 flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-sky-500 text-sm font-bold text-white">
+          {getInitials(hostName)}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate font-medium text-slate-900">{hostName}</p>
+          <p className="truncate text-sm text-slate-500">{hostLevel || sportLabel}</p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {statusLabel && (
+          <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+            {statusLabel}
+          </span>
+        )}
+        {modeLabel && (
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+            {modeLabel}
+          </span>
+        )}
+        {genderPreferenceLabel && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            <Shield className="h-3.5 w-3.5" />
+            {genderPreferenceLabel}
+          </span>
+        )}
+        {priceLabel && (
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+            {priceLabel}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-5 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+        <div className="inline-flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-3">
+          <Clock3 className="h-4 w-4 text-emerald-600" />
+          <span>
+            {dateLabel} • {timeLabel}
+          </span>
+        </div>
+        <div className="inline-flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-3">
+          <MapPin className="h-4 w-4 text-sky-600" />
+          <span className="truncate">
+            {locationLabel}, {cityLabel}
+          </span>
+        </div>
+      </div>
+
+      {description && (
+        <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{description}</p>
+      )}
+
+      <div className="mt-5 rounded-3xl bg-slate-50 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 text-sm text-slate-600">
+            <Users className="h-4 w-4 text-emerald-600" />
+            <span>
+              {currentPlayers}/{maxPlayers} {language === "ro" ? "participanți" : "participants"}
+            </span>
+          </div>
+          <span className="text-sm font-medium text-slate-700">
+            {spotsLeft} {language === "ro" ? "locuri libere" : "spots left"}
+          </span>
+        </div>
+
+        <div className="mt-3 h-2 rounded-full bg-white">
+          <div
+            className="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {participantNames.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {participantNames.slice(0, 4).map((name) => (
+              <span
+                key={`${name}-${currentPlayers}`}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600"
+              >
+                {name}
+              </span>
+            ))}
+            {participantNames.length > 4 && (
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                +{participantNames.length - 4}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={onAction}
+        disabled={actionDisabled || actionLoading || !onAction}
+        className={`mt-5 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+          actionDisabled || !onAction
+            ? "cursor-not-allowed bg-slate-200 text-slate-500"
+            : "bg-emerald-600 text-white hover:bg-emerald-700"
+        }`}
+      >
+        {actionLoading ? (language === "ro" ? "Se procesează..." : "Working...") : actionLabel}
+      </button>
+    </article>
   );
 }

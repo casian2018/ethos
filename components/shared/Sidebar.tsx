@@ -1,31 +1,26 @@
-/**
- * Sidebar - Modern Ethos Navigation
- */
-
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { 
-  Home, 
-  Dumbbell, 
-  List,
-  Users,
-  BookOpen,
-  Moon,
-  BarChart,
-  User, 
-  Globe,
-  LogOut,
-  Sparkles,
+import { usePathname, useRouter } from "next/navigation";
+import {
   Apple,
+  BarChart,
+  BookOpen,
+  Dumbbell,
+  Globe,
+  Home,
+  List,
+  LogOut,
+  Moon,
+  Sparkles,
+  User,
+  Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { signOut } from "firebase/auth";
 import { useState } from "react";
 import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { cn } from "@/lib/utils";
 
 const mainNavigation = [
   { name: "Dashboard", href: "/dev/main", icon: Home },
@@ -57,39 +52,78 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 flex-col bg-white border-r border-slate-200 lg:flex">
-      <div className="flex grow flex-col overflow-y-auto">
-        {/* Logo */}
-        <div className="flex h-20 shrink-0 items-center px-6 border-b border-slate-100">
-          <Link href="/dev/main" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#D4896F] to-[#e09a85] rounded-xl flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[22rem] p-5 lg:block">
+      <div className="ethos-panel flex h-full flex-col overflow-hidden rounded-[36px] p-4">
+        <Link
+          href="/dev/main"
+          className="ethos-card-lift rounded-[28px] border border-slate-200/70 bg-gradient-to-br from-[#12211f] via-[#17332f] to-[#f0743e] px-5 py-5 text-white shadow-[0_20px_50px_rgba(17,31,30,0.18)]"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-white/12 backdrop-blur">
+              <Sparkles className="h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold text-slate-900">Ethos</span>
-          </Link>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Ethos</p>
+              <h1 className="ethos-display text-3xl font-semibold leading-none">Train with presence</h1>
+            </div>
+          </div>
+          <p className="mt-4 max-w-xs text-sm leading-6 text-white/76">
+            {language === "ro"
+              ? "Antrenament, nutriție, recovery și comunitate într-un spațiu care nu arată ca orice alt fitness app."
+              : "Training, nutrition, recovery, and community in a space that does not look like every other fitness app."}
+          </p>
+        </Link>
+
+        <div className="mt-4 rounded-[28px] border border-slate-200/70 bg-white/72 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                {language === "ro" ? "Spațiul tău" : "Your space"}
+              </p>
+              <p className="mt-2 text-sm text-slate-600">
+                {language === "ro" ? "Navigație rapidă între modulele esențiale." : "Fast access to your core modules."}
+              </p>
+            </div>
+            <span className="ethos-chip bg-emerald-50 text-emerald-700">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              {language === "ro" ? "Live" : "Live"}
+            </span>
+          </div>
         </div>
 
-        {/* Main Navigation */}
-        <nav className="flex flex-1 flex-col p-4">
-          <ul role="list" className="space-y-1.5">
+        <nav className="ethos-scroll mt-4 flex-1 overflow-y-auto pr-1">
+          <ul className="space-y-2">
             {mainNavigation.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
               return (
                 <li key={item.name}>
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
-                      isActive
-                        ? "bg-[#D4896F]/10 text-[#D4896F]"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      "ethos-sidebar-link ethos-card-lift border border-transparent",
+                      isActive ? "ethos-sidebar-link-active" : "bg-transparent"
                     )}
                   >
-                    <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                    {item.name}
-                    {isActive && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#D4896F]" />
-                    )}
+                    <div
+                      className={cn(
+                        "flex h-11 w-11 items-center justify-center rounded-2xl border border-transparent",
+                        isActive
+                          ? "bg-white/70 text-slate-900 shadow-sm"
+                          : "bg-slate-100/80 text-slate-600"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{item.name}</p>
+                    </div>
+                    <span
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        isActive ? "bg-gradient-to-r from-orange-500 to-emerald-500" : "bg-transparent"
+                      )}
+                    />
                   </Link>
                 </li>
               );
@@ -97,75 +131,61 @@ export default function Sidebar() {
           </ul>
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-slate-100 p-4 space-y-3">
-          {/* Language Toggle */}
-          <div className="relative z-50">
+        <div className="mt-4 space-y-3 rounded-[28px] border border-slate-200/70 bg-white/76 p-4">
+          <div className="relative">
             <button
-              onClick={() => setShowLangMenu(!showLangMenu)}
-              className="flex items-center justify-between w-full rounded-xl px-4 py-2.5 hover:bg-slate-100 transition-colors"
+              type="button"
+              onClick={() => setShowLangMenu((current) => !current)}
+              className="flex w-full items-center justify-between rounded-2xl bg-slate-100/80 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <Globe className="h-5 w-5 text-slate-600" />
-                <span className="text-sm font-medium text-slate-700">
-                  {language === "en" ? "English" : "Română"}
-                </span>
-              </div>
-              <svg 
-                className={cn(
-                  "h-4 w-4 text-slate-500 transition-transform",
-                  showLangMenu && "rotate-180"
-                )} 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <span className="flex items-center gap-3">
+                <Globe className="h-4 w-4" />
+                {language === "en" ? "English" : "Română"}
+              </span>
+              <span className={cn("transition-transform", showLangMenu && "rotate-180")}>⌄</span>
             </button>
 
-            {/* Language Dropdown */}
             {showLangMenu && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-100 rounded-xl shadow-lg z-[100] overflow-hidden">
+              <div className="absolute bottom-full left-0 right-0 z-20 mb-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
                 <button
+                  type="button"
                   onClick={() => {
                     setLanguage("en");
                     setShowLangMenu(false);
                   }}
                   className={cn(
-                    "flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors",
-                    language === "en" && "bg-[#D4896F]/10 text-[#D4896F] font-medium"
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm",
+                    language === "en" ? "bg-emerald-50 font-semibold text-emerald-700" : "text-slate-700 hover:bg-slate-50"
                   )}
                 >
-                  <span className="text-lg">🇬🇧</span>
-                  <span>English</span>
+                  <span>🇬🇧</span>
+                  English
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setLanguage("ro");
                     setShowLangMenu(false);
                   }}
                   className={cn(
-                    "flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors",
-                    language === "ro" && "bg-[#D4896F]/10 text-[#D4896F] font-medium"
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm",
+                    language === "ro" ? "bg-emerald-50 font-semibold text-emerald-700" : "text-slate-700 hover:bg-slate-50"
                   )}
                 >
-                  <span className="text-lg">🇷🇴</span>
-                  <span>Română</span>
+                  <span>🇷🇴</span>
+                  Română
                 </button>
               </div>
             )}
           </div>
 
-          {/* Logout Button */}
           <button
+            type="button"
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full rounded-xl px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors"
+            className="flex w-full items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-100"
           >
-            <LogOut className="h-5 w-5" />
-            <span className="text-sm font-medium">
-              {language === "en" ? "Logout" : "Deconectare"}
-            </span>
+            <LogOut className="h-4 w-4" />
+            {language === "en" ? "Logout" : "Deconectare"}
           </button>
         </div>
       </div>

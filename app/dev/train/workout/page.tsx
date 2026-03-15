@@ -1,42 +1,26 @@
-/**
- * Workout Generator - Guided AI workout creation
- * 
- * Flow:
- * 1. Select workout type (Gym/Home/Cardio/Stretching)
- * 2. Select intensity (Low/Medium/High)
- * 3. Select duration (15/20/30/45/60 min)
- * 4. Generate AI workout
- */
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
+import {
+  buildWorkoutProfileContext,
+  getProfileHeadline,
+  profileNeedsOnboarding,
+  type DetailedUserProfile,
+} from "@/lib/profile";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
+const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 type WorkoutType = "gym" | "home" | "cardio" | "stretching" | null;
 type Intensity = "low" | "medium" | "high" | null;
 type Duration = 15 | 20 | 30 | 45 | 60 | null;
 type Step = "type" | "intensity" | "duration" | "generating" | "result";
-
-interface UserProfile {
-  age?: number;
-  height?: number;
-  weight?: number;
-  experienceLevel?: string;
-  goals?: string[];
-  trainingEnvironment?: string;
-  homeEquipment?: string[];
-  daysPerWeek?: number;
-  injuries?: string[];
-  activityLevel?: string;
-}
 
 interface Exercise {
   name: string;
@@ -60,12 +44,65 @@ interface Workout {
   exercises: Exercise[];
 }
 
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+function getFallbackExercises(profile: DetailedUserProfile, workoutType: WorkoutType): Exercise[] {
+  const lowImpact = profile.medicalConditions.includes("joint-problems") || profile.medicalConditions.includes("back-pain");
+  const hasBands = profile.homeEquipment.includes("resistance-bands");
+  const hasDumbbells = profile.homeEquipment.includes("dumbbells");
+
+  if (workoutType === "cardio") {
+    return lowImpact
+      ? [
+          { name: "Brisk Walk", sets: 4, workInterval: "4 min", restInterval: "1 min", muscleGroup: "cardio", tips: ["Keep a sustainable pace"], mistakes: ["Starting too fast"] },
+          { name: "Step Touch", sets: 4, workInterval: "45sec", restInterval: "15sec", muscleGroup: "legs", tips: ["Stay light on feet"], mistakes: ["Twisting the knees"] },
+          { name: "Shadow Boxing", sets: 4, workInterval: "45sec", restInterval: "20sec", muscleGroup: "upper body", tips: ["Keep core active"], mistakes: ["Locking the elbows"] },
+          { name: "Marching Knees", sets: 4, workInterval: "45sec", restInterval: "15sec", muscleGroup: "full body", tips: ["Drive knees smoothly"], mistakes: ["Leaning back"] },
+        ]
+      : [
+          { name: "Jumping Jacks", sets: 4, workInterval: "45sec", restInterval: "15sec", muscleGroup: "full body", tips: ["Land softly"], mistakes: ["Heavy landing"] },
+          { name: "High Knees", sets: 4, workInterval: "30sec", restInterval: "15sec", muscleGroup: "legs", tips: ["Pump your arms"], mistakes: ["Slouching"] },
+          { name: "Burpees", sets: 4, workInterval: "30sec", restInterval: "20sec", muscleGroup: "full body", tips: ["Control the landing"], mistakes: ["Rushing the push-up"] },
+          { name: "Mountain Climbers", sets: 4, workInterval: "35sec", restInterval: "15sec", muscleGroup: "core", tips: ["Keep shoulders stacked"], mistakes: ["Hips too high"] },
+        ];
+  }
+
+  if (workoutType === "stretching") {
+    return [
+      { name: "Cat-Cow Stretch", sets: 2, reps: "10", holdTime: "5 breaths", muscleGroup: "spine", tips: ["Move with breath"], mistakes: ["Rushing"] },
+      { name: "Hip Flexor Stretch", sets: 2, reps: "each side", holdTime: "30sec", muscleGroup: "hips", tips: ["Stay tall"], mistakes: ["Arching lower back"] },
+      { name: "Hamstring Stretch", sets: 2, reps: "each side", holdTime: "30sec", muscleGroup: "hamstrings", tips: ["Lengthen spine"], mistakes: ["Bouncing"] },
+      { name: "Thoracic Rotation", sets: 2, reps: "8 each side", holdTime: "2 breaths", muscleGroup: "upper back", tips: ["Move slowly"], mistakes: ["Forcing the range"] },
+      { name: "Child's Pose", sets: 2, reps: "60sec", holdTime: "60sec", muscleGroup: "back", tips: ["Relax shoulders"], mistakes: ["Holding breath"] },
+    ];
+  }
+
+  if (workoutType === "home") {
+    const rowsName = hasBands ? "Resistance Band Rows" : hasDumbbells ? "Single Arm Dumbbell Rows" : "Back Widows";
+
+    return [
+      { name: "Warm-up Flow", sets: 1, reps: "5 min", rest: "0", muscleGroup: "full body", tips: ["Mobilize shoulders and hips"], mistakes: ["Skipping warm-up"] },
+      { name: lowImpact ? "Box Squats" : "Bodyweight Squats", sets: 3, reps: "12", rest: "45sec", muscleGroup: "legs", tips: ["Keep chest proud"], mistakes: ["Knees collapsing inward"] },
+      { name: "Push-ups", sets: 3, reps: lowImpact ? "8-10" : "10-15", rest: "45sec", muscleGroup: "chest", tips: ["Brace core"], mistakes: ["Hips sagging"] },
+      { name: rowsName, sets: 3, reps: "12", rest: "45sec", muscleGroup: "back", tips: ["Lead with elbow"], mistakes: ["Shrugging shoulders"] },
+      { name: "Glute Bridge", sets: 3, reps: "15", rest: "30sec", muscleGroup: "glutes", tips: ["Squeeze at top"], mistakes: ["Overextending back"] },
+      { name: "Dead Bug", sets: 3, reps: "10 each side", rest: "30sec", muscleGroup: "core", tips: ["Keep lower back planted"], mistakes: ["Moving too fast"] },
+    ];
+  }
+
+  return [
+    { name: "Dynamic Warm-up", sets: 1, reps: "5 min", rest: "0", muscleGroup: "full body", tips: ["Prime the main lifts"], mistakes: ["Going heavy too soon"] },
+    { name: lowImpact ? "Goblet Box Squat" : "Barbell Back Squat", sets: 4, reps: "6-8", rest: "90sec", muscleGroup: "legs", tips: ["Drive through full foot"], mistakes: ["Collapsing chest"] },
+    { name: hasDumbbells ? "Dumbbell Bench Press" : "Bench Press", sets: 4, reps: "6-10", rest: "90sec", muscleGroup: "chest", tips: ["Control the eccentric"], mistakes: ["Bouncing the bar"] },
+    { name: "Romanian Deadlift", sets: 3, reps: "8-10", rest: "75sec", muscleGroup: "posterior chain", tips: ["Hinge from hips"], mistakes: ["Rounding the back"] },
+    { name: "Seated Cable Row", sets: 3, reps: "10-12", rest: "60sec", muscleGroup: "back", tips: ["Pull elbows back"], mistakes: ["Using momentum"] },
+    { name: "Pallof Press", sets: 3, reps: "10 each side", rest: "45sec", muscleGroup: "core", tips: ["Stay square"], mistakes: ["Rotating torso"] },
+  ];
+}
 
 export default function WorkoutGeneratorPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<DetailedUserProfile | null>(null);
+  const [needsProfile, setNeedsProfile] = useState(false);
   const [step, setStep] = useState<Step>("type");
   const [workoutType, setWorkoutType] = useState<WorkoutType>(null);
   const [intensity, setIntensity] = useState<Intensity>(null);
@@ -77,174 +114,149 @@ export default function WorkoutGeneratorPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-        // For demo, create a mock user
-        setUser({ uid: "demo-user" } as User);
-        setLoading(false);
+        router.replace("/auth");
         return;
       }
+
       setUser(currentUser);
 
-      // Fetch user profile
       try {
         const profileDoc = await getDoc(doc(db, "users", currentUser.uid));
-        if (profileDoc.exists()) {
-          setProfile(profileDoc.data() as UserProfile);
+        if (!profileDoc.exists()) {
+          setNeedsProfile(true);
+        } else {
+          const data = profileDoc.data() as DetailedUserProfile;
+          if (profileNeedsOnboarding(data)) {
+            setNeedsProfile(true);
+          } else {
+            setProfile(data);
+          }
         }
       } catch (err) {
-        console.error("Error loading profile:", err);
+        console.error("Error loading detailed profile:", err);
+        setNeedsProfile(true);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   const handleTypeSelect = (type: WorkoutType) => {
     setWorkoutType(type);
     setStep("intensity");
   };
 
-  const handleIntensitySelect = (int: Intensity) => {
-    setIntensity(int);
+  const handleIntensitySelect = (selectedIntensity: Intensity) => {
+    setIntensity(selectedIntensity);
     setStep("duration");
   };
 
-  const handleDurationSelect = (dur: Duration) => {
-    setDuration(dur);
-    generateWorkout();
+  const handleDurationSelect = (selectedDuration: Duration) => {
+    setDuration(selectedDuration);
+    void generateWorkout(selectedDuration);
   };
 
-  const generateWorkout = async () => {
-    setStep("generating");
+  const generateWorkout = async (selectedDuration = duration) => {
+    if (!profile || !workoutType || !intensity || !selectedDuration) {
+      return;
+    }
 
-    // Build context from user profile
-    const userContext = `
-User Profile:
-- Experience: ${profile?.experienceLevel || "not set"}
-- Goals: ${profile?.goals?.join(", ") || "general fitness"}
-- Training: ${profile?.trainingEnvironment || "gym"}
-- Equipment: ${profile?.homeEquipment?.join(", ") || "none"}
-- Injuries: ${profile?.injuries?.join(", ") || "none"}
-- Activity Level: ${profile?.activityLevel || "moderate"}
-    `.trim();
+    setStep("generating");
+    const userContext = buildWorkoutProfileContext(profile);
 
     const prompt = `
-You are a professional fitness coach. Generate a personalized workout based on:
+You are a professional fitness coach. Build a single workout session.
 
+Detailed athlete context:
 ${userContext}
 
-Workout Requirements:
+Session request:
 - Type: ${workoutType}
 - Intensity: ${intensity}
-- Duration: ${duration} minutes
+- Duration: ${selectedDuration} minutes
+- Athlete name: ${getProfileHeadline(profile)}
+
+Rules:
+- Respect all injuries and medical conditions.
+- Use the available equipment and training environment.
+- Match the session to the priority goal: ${profile.priorityGoal}.
+- Adjust volume if sleep is low (${profile.sleepHours}h) or stress is high (${profile.stressLevel}).
+- Make the plan realistic for ${profile.daysPerWeek} sessions per week.
 
 Return ONLY valid JSON with this exact structure:
 {
   "type": "${workoutType}",
   "intensity": "${intensity}",
-  "duration": ${duration},
+  "duration": ${selectedDuration},
   "exercises": [
     {
       "name": "exercise name",
-      "sets": number or null,
-      "reps": "string or null" or "duration like 30sec",
-      "duration": "string or null",
-      "rest": "string like 60sec",
+      "sets": 3,
+      "reps": "10",
+      "duration": null,
+      "rest": "60sec",
       "muscleGroup": "string",
       "tips": ["tip1", "tip2"],
       "mistakes": ["mistake1", "mistake2"],
-      "workInterval": "for cardio only",
-      "restInterval": "for cardio only",
-      "holdTime": "for stretching only",
-      "breathing": "for stretching only"
+      "workInterval": null,
+      "restInterval": null,
+      "holdTime": null,
+      "breathing": null
     }
   ]
 }
-
-Rules for each workout type:
-
-GYM: Include compound movements (bench press, squats, deadlifts) and accessories. Use weights.
-
-HOME: Use bodyweight or minimal equipment (push-ups, squats, lunges, planks).
-
-CARDIO: Include work/rest intervals,HIIT circuits, running, jumping rope. Include workInterval and restInterval.
-
-STRETCHING: Focus on mobility, holdTime, breathing instructions for each stretch.
-
-For LOW intensity: 8-10 exercises, shorter holds, more rest.
-For MEDIUM intensity: 10-12 exercises, moderate challenge.
-For HIGH intensity: 12-15 exercises, minimal rest, challenging.
-
-Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(", ") || "none"}
     `.trim();
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4000,
-          }
-        })
-      });
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.5,
+              maxOutputTokens: 3000,
+            },
+          }),
+        }
+      );
 
       const data = await response.json();
       const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-      // Extract JSON from response
       const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+
       if (jsonMatch) {
-        const parsedWorkout = JSON.parse(jsonMatch[0]);
-        setWorkout(parsedWorkout);
+        setWorkout(JSON.parse(jsonMatch[0]) as Workout);
       } else {
-        // Fallback to demo workout if parsing fails
-        setWorkout(generateDemoWorkout());
+        setWorkout({
+          type: workoutType,
+          intensity,
+          duration: selectedDuration,
+          exercises: getFallbackExercises(profile, workoutType),
+        });
       }
     } catch (err) {
       console.error("Error generating workout:", err);
-      // Use demo workout on error
-      setWorkout(generateDemoWorkout());
+      setWorkout({
+        type: workoutType,
+        intensity,
+        duration: selectedDuration,
+        exercises: getFallbackExercises(profile, workoutType),
+      });
     }
 
     setStep("result");
   };
 
-  const generateDemoWorkout = (): Workout => {
-    const exercises: Exercise[] = workoutType === "gym" ? [
-      { name: "Warm-up", sets: 1, reps: "5 min", rest: "0", muscleGroup: "full body", tips: ["Light jogging", "Dynamic stretching"], mistakes: ["Skipping warm-up"] },
-      { name: "Push-ups", sets: 3, reps: "12", rest: "60sec", muscleGroup: "chest, triceps", tips: ["Keep core tight", "Full range of motion"], mistakes: ["Flaring elbows"] },
-      { name: "Squats", sets: 3, reps: "15", rest: "60sec", muscleGroup: "quads, glutes", tips: ["Chest up", "Knees over toes"], mistakes: ["Letting knees cave in"] },
-      { name: "Dumbbell Rows", sets: 3, reps: "12", rest: "60sec", muscleGroup: "back, biceps", tips: ["Pull to hip", "Keep back flat"], mistakes: ["Using momentum"] },
-      { name: "Plank", sets: 3, reps: "30sec", rest: "45sec", muscleGroup: "core", tips: ["Squeeze glutes", "Don't hold breath"], mistakes: ["Holding too high"] },
-      { name: "Cool-down", sets: 1, reps: "5 min", rest: "0", muscleGroup: "full body", tips: ["Static stretching"], mistakes: ["Skipping cool-down"] },
-    ] : workoutType === "cardio" ? [
-      { name: "Jumping Jacks", sets: 4, workInterval: "45sec", restInterval: "15sec", muscleGroup: "full body", tips: ["Land softly", "Keep arms straight"], mistakes: ["Heavy landing"] },
-      { name: "High Knees", sets: 4, workInterval: "30sec", restInterval: "15sec", muscleGroup: "legs, cardio", tips: ["Drive knees high", "Pump arms"], mistakes: ["Slouching"] },
-      { name: "Burpees", sets: 4, workInterval: "30sec", restInterval: "15sec", muscleGroup: "full body", tips: ["Modify if needed", "Keep pace"], mistakes: ["Rushing form"] },
-      { name: "Mountain Climbers", sets: 4, workInterval: "30sec", restInterval: "15sec", muscleGroup: "core, cardio", tips: ["Core engaged", "Alternating fast"], mistakes: ["Hips too high"] },
-      { name: "Jump Rope", sets: 4, workInterval: "45sec", restInterval: "15sec", muscleGroup: "full body", tips: ["Light on feet", " wrists only"], mistakes: ["Jumping too high"] },
-    ] : [
-      { name: "Cat-Cow Stretch", sets: 2, reps: "10", holdTime: "5 breaths", muscleGroup: "spine", tips: ["Move with breath", "Full extension"], mistakes: ["Rushing"] },
-      { name: "Hip Flexor Stretch", sets: 2, reps: "each side", holdTime: "30sec", muscleGroup: "hips", tips: ["Push hips forward", "Keep torso tall"], mistakes: ["Leaning forward"] },
-      { name: "Hamstring Stretch", sets: 2, reps: "each side", holdTime: "30sec", muscleGroup: "hamstrings", tips: ["Flex foot", "Reach for toes"], mistakes: ["Bouncing"] },
-      { name: "Child's Pose", sets: 2, reps: "60sec", holdTime: "60sec", muscleGroup: "back, hips", tips: ["Breathe deeply", "Relax shoulders"], mistakes: ["Rushing"] },
-      { name: "Shoulder Circles", sets: 2, reps: "10 each direction", muscleGroup: "shoulders", tips: ["Slow controlled", "Full range"], mistakes: ["Going too fast"] },
-    ];
-
-    return {
-      type: workoutType || "gym",
-      intensity: intensity || "medium",
-      duration: duration || 30,
-      exercises
-    };
-  };
-
   const saveWorkout = async () => {
-    if (!user || !workout) return;
+    if (!user || !workout || !profile) {
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -254,9 +266,16 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
         intensity: workout.intensity,
         duration: workout.duration,
         exercises: workout.exercises,
+        profileSnapshot: {
+          goals: profile.goals,
+          priorityGoal: profile.priorityGoal,
+          medicalConditions: profile.medicalConditions,
+          injuries: profile.injuries,
+          experienceLevel: profile.experienceLevel,
+        },
         createdAt: new Date(),
       });
-      alert("Workout saved!");
+      alert("Workout saved.");
     } catch (err) {
       console.error("Error saving workout:", err);
     } finally {
@@ -265,14 +284,16 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
   };
 
   const startWorkout = async () => {
-    if (!user || !workout) return;
+    if (!user || !workout) {
+      return;
+    }
+
     setSaving(true);
 
     try {
-      // Create workout session
       const sessionRef = await addDoc(collection(db, "workout_sessions"), {
         userId: user.uid,
-        workoutName: `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)} Workout`,
+        workoutName: `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)} workout`,
         workoutType: workout.type,
         date: new Date().toISOString(),
         startTime: serverTimestamp(),
@@ -280,20 +301,17 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
         source: "generated",
       });
 
-      // Add exercises to session
       for (const exercise of workout.exercises) {
-        const restSeconds = exercise.rest ? parseInt(exercise.rest.replace("sec", "")) : 60;
-        const exerciseData = {
+        const restSeconds = exercise.rest ? parseInt(exercise.rest.replace("sec", ""), 10) : 60;
+        await addDoc(collection(db, `workout_sessions/${sessionRef.id}/exercises`), {
           exerciseName: exercise.name,
           muscleGroup: exercise.muscleGroup || "",
           targetSets: exercise.sets || 3,
-          targetReps: exercise.reps || "10",
-          restTime: isNaN(restSeconds) ? 60 : restSeconds,
-        };
-        await addDoc(collection(db, `workout_sessions/${sessionRef.id}/exercises`), exerciseData);
+          targetReps: exercise.reps || exercise.duration || "10",
+          restTime: Number.isNaN(restSeconds) ? 60 : restSeconds,
+        });
       }
 
-      // Redirect to session
       router.push(`/dev/train/session/${sessionRef.id}`);
     } catch (err) {
       console.error("Error starting workout:", err);
@@ -312,36 +330,64 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (needsProfile || !profile) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/60">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Workout generator</p>
+          <h1 className="mt-4 text-3xl font-bold text-slate-900">Completează profilul detaliat mai întâi</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Generatorul citește acum obiectivele, echipamentul, condițiile medicale, somnul și nivelul de stres. Fără profil complet nu are context valid.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Link
+              href="/dev/profile/setup"
+              className="rounded-2xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-700"
+            >
+              Completează profilul
+            </Link>
+            <Link
+              href="/dev/profile"
+              className="rounded-2xl border border-slate-200 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Vezi profilul
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
-      {/* Header */}
+    <div className="mx-auto max-w-3xl px-4 py-6">
       <header className="mb-8">
-        <Link href="/dev/train" className="text-zinc-500 text-slate-500 mb-2 inline-flex items-center gap-1">
+        <Link href="/dev/train" className="inline-flex items-center gap-1 text-sm text-slate-500">
           ← Back to Train
         </Link>
-        <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 text-slate-900">
-          Workout Generator
-        </h1>
+        <h1 className="mt-3 text-3xl font-bold text-slate-900">Workout Generator</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Personalized for {getProfileHeadline(profile)} using your detailed profile, goals, recovery, and constraints.
+        </p>
       </header>
 
-      {/* Progress Indicator */}
       {step !== "generating" && step !== "result" && (
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {["type", "intensity", "duration"].map((s) => {
-            const stepOrder = ["type", "intensity", "duration"];
-            const isActive = step === s;
-            const isPast = stepOrder.indexOf(step) > stepOrder.indexOf(s);
+        <div className="mb-8 flex items-center justify-center gap-2">
+          {["type", "intensity", "duration"].map((value) => {
+            const stepsOrder = ["type", "intensity", "duration"];
+            const isActive = step === value;
+            const isPast = stepsOrder.indexOf(step) > stepsOrder.indexOf(value);
+
             return (
               <div
-                key={s}
-                className={`w-3 h-3 rounded-full transition-colors ${
-                  isActive || isPast ? "bg-emerald-500" : "bg-zinc-200 bg-slate-100"
+                key={value}
+                className={`h-3 w-3 rounded-full transition-colors ${
+                  isActive || isPast ? "bg-emerald-500" : "bg-slate-200"
                 }`}
               />
             );
@@ -349,70 +395,48 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
         </div>
       )}
 
-      {/* Step 1: Workout Type Selection */}
       {step === "type" && (
-        <div className="card p-6 animate-fade-in">
-          <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-6 text-center">
-            What type of workout?
-          </h2>
+        <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/40">
+          <h2 className="mb-6 text-center text-lg font-semibold text-slate-900">What type of workout?</h2>
           <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => handleTypeSelect("gym")}
-              className="card-hover p-6 flex flex-col items-center gap-3 text-center"
-            >
-              <span className="text-4xl">🏋️</span>
-              <span className="font-medium text-zinc-900 text-slate-900">Gym</span>
-              <span className="text-sm text-zinc-500">Weights & machines</span>
-            </button>
-            <button
-              onClick={() => handleTypeSelect("home")}
-              className="card-hover p-6 flex flex-col items-center gap-3 text-center"
-            >
-              <span className="text-4xl">🏠</span>
-              <span className="font-medium text-zinc-900 text-slate-900">Home</span>
-              <span className="text-sm text-zinc-500">Bodyweight</span>
-            </button>
-            <button
-              onClick={() => handleTypeSelect("cardio")}
-              className="card-hover p-6 flex flex-col items-center gap-3 text-center"
-            >
-              <span className="text-4xl">🏃</span>
-              <span className="font-medium text-zinc-900 text-slate-900">Cardio</span>
-              <span className="text-sm text-zinc-500">HIIT & endurance</span>
-            </button>
-            <button
-              onClick={() => handleTypeSelect("stretching")}
-              className="card-hover p-6 flex flex-col items-center gap-3 text-center"
-            >
-              <span className="text-4xl">🧘</span>
-              <span className="font-medium text-zinc-900 text-slate-900">Stretching</span>
-              <span className="text-sm text-zinc-500">Mobility & recovery</span>
-            </button>
+            {[
+              { value: "gym", emoji: "🏋️", label: "Gym", description: "Weights & machines" },
+              { value: "home", emoji: "🏠", label: "Home", description: "Bodyweight or home equipment" },
+              { value: "cardio", emoji: "🏃", label: "Cardio", description: "Intervals & endurance" },
+              { value: "stretching", emoji: "🧘", label: "Stretching", description: "Mobility & recovery" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleTypeSelect(option.value as WorkoutType)}
+                className="rounded-3xl border border-slate-200 p-6 text-center transition hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                <span className="text-4xl">{option.emoji}</span>
+                <p className="mt-3 font-semibold text-slate-900">{option.label}</p>
+                <p className="mt-1 text-sm text-slate-500">{option.description}</p>
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Step 2: Intensity Selection */}
       {step === "intensity" && (
-        <div className="card p-6 animate-fade-in">
-          <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-6 text-center">
-            What&apos;s your intensity level?
-          </h2>
+        <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/40">
+          <h2 className="mb-6 text-center text-lg font-semibold text-slate-900">What&apos;s your intensity level?</h2>
           <div className="space-y-3">
             {[
-              { value: "low", label: "Low", emoji: "😌", desc: "Recovery or beginner session" },
-              { value: "medium", label: "Medium", emoji: "💪", desc: "Balanced training" },
-              { value: "high", label: "High", emoji: "🔥", desc: "Challenging workout" },
+              { value: "low", label: "Low", emoji: "😌", description: "Recovery or low fatigue day" },
+              { value: "medium", label: "Medium", emoji: "💪", description: "Balanced progress" },
+              { value: "high", label: "High", emoji: "🔥", description: "Hard but still profile-aware" },
             ].map((option) => (
               <button
                 key={option.value}
                 onClick={() => handleIntensitySelect(option.value as Intensity)}
-                className="card-hover w-full p-4 flex items-center gap-4 text-left"
+                className="flex w-full items-center gap-4 rounded-3xl border border-slate-200 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
               >
                 <span className="text-2xl">{option.emoji}</span>
                 <div>
-                  <span className="font-medium text-zinc-900 text-slate-900">{option.label}</span>
-                  <p className="text-sm text-zinc-500">{option.desc}</p>
+                  <span className="font-semibold text-slate-900">{option.label}</span>
+                  <p className="text-sm text-slate-500">{option.description}</p>
                 </div>
               </button>
             ))}
@@ -420,103 +444,85 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
         </div>
       )}
 
-      {/* Step 3: Duration Selection */}
       {step === "duration" && (
-        <div className="card p-6 animate-fade-in">
-          <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-6 text-center">
-            How much time do you have?
-          </h2>
+        <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/40">
+          <h2 className="mb-6 text-center text-lg font-semibold text-slate-900">How much time do you have?</h2>
           <div className="grid grid-cols-3 gap-3">
-            {[
-              { value: 15, label: "15 min" },
-              { value: 20, label: "20 min" },
-              { value: 30, label: "30 min" },
-              { value: 45, label: "45 min" },
-              { value: 60, label: "60 min" },
-            ].map((option) => (
+            {[15, 20, 30, 45, 60].map((option) => (
               <button
-                key={option.value}
-                onClick={() => handleDurationSelect(option.value as Duration)}
-                className="card-hover p-4 text-center font-medium text-zinc-900 text-slate-900"
+                key={option}
+                onClick={() => handleDurationSelect(option as Duration)}
+                className="rounded-2xl border border-slate-200 p-4 text-center font-semibold text-slate-900 transition hover:border-emerald-300 hover:bg-emerald-50"
               >
-                {option.label}
+                {option} min
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Step 4: Generating */}
       {step === "generating" && (
-        <div className="card p-12 text-center animate-fade-in">
-          <div className="text-5xl mb-6 animate-bounce">✨</div>
-          <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-2">
-            Generating your personalized workout
-          </h2>
-          <p className="text-zinc-500 text-slate-500">
-            Creating a plan tailored to your profile...
+        <div className="rounded-[32px] border border-slate-200 bg-white p-12 text-center shadow-lg shadow-slate-200/40">
+          <div className="mb-6 text-5xl">✨</div>
+          <h2 className="text-xl font-semibold text-slate-900">Generating your personalized workout</h2>
+          <p className="mt-2 text-slate-500">
+            Using your equipment, injuries, recovery state, and performance goals...
           </p>
         </div>
       )}
 
-      {/* Step 5: Result */}
       {step === "result" && workout && (
-        <div className="animate-fade-in">
-          {/* Workout Summary */}
-          <div className="card p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-zinc-900 text-slate-900">
-                Your {workout.duration}-minute {workout.intensity} intensity {workout.type} workout
-              </h2>
-              <button
-                onClick={reset}
-                className="text-sm text-zinc-500 hover:text-zinc-700"
-              >
+        <div>
+          <div className="mb-6 rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/40">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">
+                  Your {workout.duration}-minute {workout.intensity} intensity {workout.type} workout
+                </h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  Built from your detailed profile context.
+                </p>
+              </div>
+              <button onClick={reset} className="text-sm font-medium text-slate-500 hover:text-slate-700">
                 Start over
               </button>
             </div>
 
-            {/* Exercise List */}
             <div className="space-y-3">
-              {workout.exercises.map((exercise, i) => (
-                <div
-                  key={i}
-                  className="p-4 bg-zinc-50 bg-slate-50 rounded-xl"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-zinc-900 text-slate-900">
-                      {exercise.name}
-                    </span>
-                    <span className="text-sm text-zinc-500">
+              {workout.exercises.map((exercise, index) => (
+                <div key={index} className="rounded-3xl bg-slate-50 p-4">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="font-semibold text-slate-900">{exercise.name}</span>
+                    <span className="text-sm text-slate-500">
                       {exercise.sets ? `${exercise.sets} × ` : ""}
                       {exercise.reps || exercise.duration || exercise.workInterval || exercise.holdTime || ""}
-                      {exercise.rest ? ` rest ${exercise.rest}` : ""}
+                      {exercise.rest ? ` • rest ${exercise.rest}` : ""}
                     </span>
                   </div>
-                  
+
                   {exercise.muscleGroup && (
-                    <span className="badge badge-primary text-xs">
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
                       {exercise.muscleGroup}
                     </span>
                   )}
 
                   {exercise.tips && exercise.tips.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-zinc-200 border-slate-200">
-                      <p className="text-xs font-medium text-zinc-700 text-slate-600 mb-1">Tips:</p>
-                      <ul className="text-xs text-zinc-500 space-y-1">
-                        {exercise.tips.map((tip, j) => (
-                          <li key={j}>• {tip}</li>
+                    <div className="mt-3 border-t border-slate-200 pt-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Tips</p>
+                      <ul className="space-y-1 text-xs text-slate-600">
+                        {exercise.tips.map((tip, tipIndex) => (
+                          <li key={tipIndex}>• {tip}</li>
                         ))}
                       </ul>
                     </div>
                   )}
 
                   {exercise.mistakes && exercise.mistakes.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-xs font-medium text-red-600 text-red-600 mb-1">Common mistakes:</p>
-                      <ul className="text-xs text-zinc-500">
-                        {exercise.mistakes.map((mistake, j) => (
-                          <li key={j}>• {mistake}</li>
+                    <div className="mt-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-rose-500">Common mistakes</p>
+                      <ul className="space-y-1 text-xs text-slate-600">
+                        {exercise.mistakes.map((mistake, mistakeIndex) => (
+                          <li key={mistakeIndex}>• {mistake}</li>
                         ))}
                       </ul>
                     </div>
@@ -526,27 +532,26 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-4">
-            <button 
+            <button
               onClick={startWorkout}
               disabled={saving}
-              className="btn-primary flex-1 py-3"
+              className="flex-1 rounded-2xl bg-emerald-600 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:bg-slate-300"
             >
               {saving ? "Starting..." : "Start Workout"}
             </button>
-            <button 
+            <button
               onClick={saveWorkout}
               disabled={saving}
-              className="btn-secondary flex-1 py-3"
+              className="flex-1 rounded-2xl border border-slate-200 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:bg-slate-100"
             >
               {saving ? "Saving..." : "Save Workout"}
             </button>
           </div>
 
           <button
-            onClick={generateWorkout}
-            className="w-full mt-4 text-center text-emerald-600 text-emerald-600 font-medium"
+            onClick={() => void generateWorkout()}
+            className="mt-4 w-full text-center font-medium text-emerald-600"
           >
             Generate another workout →
           </button>

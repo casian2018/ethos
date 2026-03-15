@@ -15,11 +15,11 @@ export function EthosCard({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card text-card-foreground shadow-sm",
+        "rounded-[28px] border text-card-foreground ethos-panel",
         "transition-all duration-300 ease-in-out",
-        variant === "outline" && "border-2 border-primary/50 bg-transparent",
-        variant === "ghost" && "bg-transparent shadow-none border-none",
-        hover && "hover:shadow-md hover:-translate-y-0.5",
+        variant === "outline" && "border-[1.5px] border-primary/35 bg-white/40 shadow-none",
+        variant === "ghost" && "border-transparent bg-transparent shadow-none backdrop-blur-none",
+        hover && "ethos-card-lift",
         className
       )}
       {...props}
@@ -35,7 +35,7 @@ export function EthosCardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex flex-col space-y-1.5 p-6", className)}
+      className={cn("flex flex-col space-y-2 p-6 md:p-7", className)}
       {...props}
     />
   );
@@ -48,7 +48,7 @@ export function EthosCardTitle({
   return (
     <h3
       className={cn(
-        "text-xl font-semibold leading-none tracking-tight",
+        "font-display text-2xl font-semibold leading-none tracking-tight text-slate-900",
         className
       )}
       {...props}
@@ -62,7 +62,7 @@ export function EthosCardDescription({
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm leading-6 text-muted-foreground", className)}
       {...props}
     />
   );
@@ -72,7 +72,7 @@ export function EthosCardContent({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-6 pt-0", className)} {...props} />;
+  return <div className={cn("p-6 pt-0 md:p-7 md:pt-0", className)} {...props} />;
 }
 
 export function EthosCardFooter({
@@ -81,7 +81,7 @@ export function EthosCardFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex items-center p-6 pt-0", className)}
+      className={cn("flex items-center p-6 pt-0 md:p-7 md:pt-0", className)}
       {...props}
     />
   );

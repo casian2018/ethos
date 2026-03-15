@@ -1,138 +1,122 @@
-/**
- * BuddyCard - Card showing potential workout partners
- */
-
 "use client";
 
-import { Star, MessageCircle } from "lucide-react";
+import { ArrowRight, CalendarDays, MapPin } from "lucide-react";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 interface BuddyCardProps {
   name: string;
-  avatar: string;
   sports: string[];
   level: string;
-  rating: number;
+  city: string;
   matchScore: number;
-  available: boolean;
-  onMessage?: () => void;
+  availableSlots: number;
+  nextAvailableLabel?: string;
+  goalTags?: string[];
+  onView?: () => void;
 }
 
-// Sport emoji mapping
-const getSportEmoji = (sportName: string) => {
-  const emojis: Record<string, string> = {
-    gym: "🏋️",
-    running: "🏃",
-    swimming: "🏊",
-    football: "⚽",
-    tennis: "🎾",
-    basketball: "🏀",
-    cycling: "🚴",
-    yoga: "🧘",
-    hiking: "🥾",
-    boxing: "🥊",
-    volleyball: "🏐",
-    pilates: "🧘‍♀️",
-  };
-  return emojis[sportName.toLowerCase()] || "🏃";
-};
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return "ET";
+  }
+
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${words[0][0] || ""}${words[1][0] || ""}`.toUpperCase();
+}
+
+function getScoreStyles(score: number): string {
+  if (score >= 90) {
+    return "bg-emerald-100 text-emerald-700";
+  }
+  if (score >= 80) {
+    return "bg-sky-100 text-sky-700";
+  }
+  if (score >= 70) {
+    return "bg-amber-100 text-amber-700";
+  }
+  return "bg-slate-100 text-slate-600";
+}
 
 export function BuddyCard({
   name,
-  avatar,
   sports,
   level,
-  rating,
+  city,
   matchScore,
-  available,
-  onMessage,
+  availableSlots,
+  nextAvailableLabel,
+  goalTags = [],
+  onView,
 }: BuddyCardProps) {
   const { language } = useLanguage();
 
-  // Determine match score color
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return "bg-emerald-500";
-    if (score >= 80) return "bg-blue-500";
-    if (score >= 70) return "bg-amber-500";
-    return "bg-slate-400";
-  };
-
   return (
-    <div className="group bg-white rounded-3xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-xl transition-all duration-300">
-      {/* Match Score Badge */}
-      <div className="flex justify-end mb-2">
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-bold ${getScoreColor(matchScore)}`}>
-          <span>{matchScore}%</span>
-          <span className="text-[10px] opacity-80">{language === "ro" ? "match" : "match"}</span>
+    <article className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/40">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500 text-sm font-bold text-white">
+            {getInitials(name)}
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-900">{name}</h3>
+            <p className="text-sm text-slate-500">{level}</p>
+          </div>
+        </div>
+        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${getScoreStyles(matchScore)}`}>
+          {matchScore}% {language === "ro" ? "match" : "match"}
         </div>
       </div>
 
-      {/* Avatar */}
-      <div className="relative mb-4">
-        <img 
-          src={avatar} 
-          alt={name}
-          className="w-20 h-20 rounded-2xl object-cover mx-auto"
-        />
-        {/* Available Indicator */}
-        {available && (
-          <div className="absolute bottom-0 right-1/2 translate-x-6 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white" />
-        )}
-      </div>
-
-      {/* Name & Level */}
-      <div className="text-center mb-3">
-        <h3 className="font-bold text-slate-900 text-lg">{name}</h3>
-        <p className="text-slate-500 text-sm">{level}</p>
-      </div>
-
-      {/* Rating */}
-      <div className="flex items-center justify-center gap-1 mb-3">
-        <Star className="w-4 h-4 text-amber-500 fill-current" />
-        <span className="font-semibold text-slate-900">{rating.toFixed(1)}</span>
-        <span className="text-slate-400 text-sm">({language === "ro" ? "recenzii" : "reviews"})</span>
-      </div>
-
-      {/* Sports */}
-      <div className="flex flex-wrap justify-center gap-2 mb-4">
-        {sports.slice(0, 3).map((sport, index) => (
-          <span 
-            key={index}
-            className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium"
+      <div className="mt-4 flex flex-wrap gap-2">
+        {sports.slice(0, 3).map((sport) => (
+          <span
+            key={sport}
+            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
           >
-            {getSportEmoji(sport)} {sport}
+            {sport}
           </span>
         ))}
       </div>
 
-      {/* Availability Status */}
-      <div className="text-center mb-4">
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-          available 
-            ? "bg-emerald-100 text-emerald-700" 
-            : "bg-slate-100 text-slate-500"
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${available ? "bg-emerald-500" : "bg-slate-400"}`} />
-          {available 
-            ? (language === "ro" ? "Disponibil" : "Available")
-            : (language === "ro" ? "Indisponibil" : "Unavailable")
-          }
-        </span>
+      {goalTags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {goalTags.slice(0, 2).map((goal) => (
+            <span
+              key={goal}
+              className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
+            >
+              {goal}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 space-y-2 text-sm text-slate-600">
+        <div className="inline-flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-sky-600" />
+          <span>{city}</span>
+        </div>
+        <div className="inline-flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-emerald-600" />
+          <span>
+            {availableSlots} {language === "ro" ? "sloturi disponibile" : "slots available"}
+            {nextAvailableLabel ? ` • ${nextAvailableLabel}` : ""}
+          </span>
+        </div>
       </div>
 
-      {/* Message Button */}
       <button
-        onClick={onMessage}
-        disabled={!available}
-        className={`w-full py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-          available
-            ? "bg-slate-900 text-white hover:bg-slate-800 hover:shadow-lg"
-            : "bg-slate-100 text-slate-400 cursor-not-allowed"
-        }`}
+        type="button"
+        onClick={onView}
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
       >
-        <MessageCircle className="w-4 h-4" />
-        {language === "ro" ? "Mesaj" : "Message"}
+        {language === "ro" ? "Vezi sloturile" : "View slots"}
+        <ArrowRight className="h-4 w-4" />
       </button>
-    </div>
+    </article>
   );
 }

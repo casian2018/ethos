@@ -7,9 +7,5 @@ export default function TrainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="min-h-screen bg-zinc-50 bg-white">
-      {children}
-    </div>
-  );
+  return <div className="min-h-screen">{children}</div>;
 }

@@ -1,64 +1,135 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import ProfileDetailsWizard from "@/components/features/profile/ProfileDetailsWizard";
 import { useLanguage } from "@/components/LanguageContext";
+import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
+import {
+  buildProfileDocument,
+  profileNeedsOnboarding,
+  type DetailedUserProfile,
+  type ProfileFormState,
+} from "@/lib/profile";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
 const googleProvider = new GoogleAuthProvider();
 
-// Helper to check if user has a profile
-async function userHasProfile(userId: string): Promise<boolean> {
-  if (!db) return false;
-  try {
-    const userDoc = await getDoc(doc(db, "users", userId));
-    return userDoc.exists();
-  } catch {
-    return false;
-  }
-}
-
-// Determine where to redirect after auth
 async function getRedirectPath(userId: string): Promise<string> {
-  const hasProfile = await userHasProfile(userId);
-  if (!hasProfile) {
+  const userDoc = await getDoc(doc(db, "users", userId));
+  if (!userDoc.exists()) {
     return "/dev/profile/setup";
   }
-  return "/dev/main";
+
+  const userProfile = userDoc.data() as Partial<DetailedUserProfile>;
+  return profileNeedsOnboarding(userProfile) ? "/dev/profile/setup" : "/dev/main";
 }
 
 export default function AuthPage() {
   const router = useRouter();
   const { language } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [registerStage, setRegisterStage] = useState<"credentials" | "profile">("credentials");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        return;
+      }
+
+      const redirectPath = await getRedirectPath(user.uid);
+      router.replace(redirectPath);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  const resetRegisterFlow = () => {
+    setRegisterStage("credentials");
+    setRegisterEmail("");
+    setRegisterPassword("");
+    setConfirmPassword("");
+  };
+
+  const toggleMode = () => {
+    setError("");
+    setLoading(false);
+    setIsLogin((current) => !current);
+    resetRegisterFlow();
+  };
+
+  const handleLoginSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      let userCredential;
-      if (isLogin) {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      }
-      
-      // Check if user has profile and redirect accordingly
+      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       const redirectPath = await getRedirectPath(userCredential.user.uid);
       router.push(redirectPath);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : "A apărut o eroare la autentificare.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const continueToProfileQuiz = (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+
+    if (!registerEmail.trim() || !registerPassword.trim()) {
+      setError(language === "ro" ? "Completează emailul și parola." : "Complete the email and password.");
+      return;
+    }
+
+    if (registerPassword.length < 6) {
+      setError(language === "ro" ? "Parola trebuie să aibă minim 6 caractere." : "Password must have at least 6 characters.");
+      return;
+    }
+
+    if (registerPassword !== confirmPassword) {
+      setError(language === "ro" ? "Parolele nu coincid." : "Passwords do not match.");
+      return;
+    }
+
+    setRegisterStage("profile");
+  };
+
+  const handleRegisterSubmit = async (formState: ProfileFormState) => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
+      const profileDocument = buildProfileDocument(
+        {
+          ...formState,
+          email: registerEmail,
+        },
+        { email: registerEmail }
+      );
+
+      await setDoc(doc(db, "users", userCredential.user.uid), profileDocument, { merge: true });
+      router.push("/dev/main");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "A apărut o eroare la crearea contului.");
     } finally {
       setLoading(false);
     }
@@ -70,100 +141,185 @@ export default function AuthPage() {
 
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      
-      // Check if user has profile and redirect accordingly
       const redirectPath = await getRedirectPath(result.user.uid);
       router.push(redirectPath);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : "A apărut o eroare la autentificarea cu Google.");
     } finally {
       setLoading(false);
     }
   };
 
+  const isRegistering = !isLogin;
+  const wideLayout = isRegistering && registerStage === "profile";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white px-4">
-      <div className="max-w-md w-full bg-white bg-slate-50 rounded-lg shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-center text-zinc-900 text-slate-900 mb-6">
-          {language === "ro" ? "Bine ai venit la ETHOS" : "Welcome to ETHOS"}
-        </h1>
+    <div className="ethos-shell-bg min-h-screen px-4 py-6 sm:px-6 sm:py-8">
+      <div className={`mx-auto ${wideLayout ? "max-w-5xl" : "max-w-md"}`}>
+        <div className={`${wideLayout ? "grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
+          <aside className="ethos-panel rounded-[36px] p-8">
+            <div className="ethos-kicker">{language === "ro" ? "Acces Ethos" : "Ethos Access"}</div>
+            <h1 className="ethos-display mt-5 text-5xl font-semibold leading-none text-slate-900">
+              {isLogin
+                ? (language === "ro" ? "Intră în cont" : "Sign in")
+                : (language === "ro" ? "Creează contul cu profil complet" : "Create an account with full profile")}
+            </h1>
+            <p className="mt-5 text-sm leading-7 text-slate-600">
+              {isLogin
+                ? (language === "ro"
+                    ? "Login-ul verifică acum și dacă onboarding-ul este complet, nu doar dacă există documentul de user."
+                    : "Login now checks whether the onboarding is complete, not just whether a user document exists.")
+                : (language === "ro"
+                    ? "Profilul detaliat este folosit mai departe în workout generation, nutrition și profil."
+                    : "The detailed profile is later used in workout generation, nutrition, and profile screens.")}
+            </p>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 bg-red-100 text-red-600 text-red-600 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
+            <div className="mt-8 rounded-[28px] border border-slate-200/80 bg-white/70 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                {language === "ro" ? "Ce se personalizează" : "What gets personalized"}
+              </p>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+                <li>Workout context: goals, injuries, equipment, sleep, stress.</li>
+                <li>Nutrition context: calories, macros, diet preference, allergies, hydration.</li>
+                <li>Profile context: identity, body metrics, lifestyle, motivation.</li>
+              </ul>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
-              {language === "ro" ? "Email" : "Email"}
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-zinc-300 border-slate-200 rounded-lg bg-white bg-slate-100 text-zinc-900 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="email@example.com"
-            />
-          </div>
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 font-semibold text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span>🔵</span>
+              {language === "ro" ? "Continuă cu Google" : "Continue with Google"}
+            </button>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
-              {language === "ro" ? "Parolă" : "Password"}
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-zinc-300 border-slate-200 rounded-lg bg-white bg-slate-100 text-zinc-900 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="••••••••"
-            />
-          </div>
+            <p className="mt-6 text-sm text-slate-500">
+              {isLogin
+                ? (language === "ro" ? "Nu ai cont?" : "Don't have an account?")
+                : (language === "ro" ? "Ai deja cont?" : "Already have an account?")}
+              <button
+                onClick={toggleMode}
+                className="ml-2 font-semibold text-orange-600 hover:text-orange-700"
+              >
+                {isLogin
+                  ? (language === "ro" ? "Treci la înregistrare" : "Go to register")
+                  : (language === "ro" ? "Treci la login" : "Go to login")}
+              </button>
+            </p>
+          </aside>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-          >
-            {loading 
-              ? (language === "ro" ? "Se încarcă..." : "Loading...") 
-              : (isLogin 
-                  ? (language === "ro" ? "Conectează-te" : "Sign In") 
-                  : (language === "ro" ? "Creează cont" : "Sign Up"))
-            }
-          </button>
-        </form>
+          <main className="ethos-panel rounded-[36px] p-8">
+            {error && (
+              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
 
-        <div className="mt-4">
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="w-full py-2 px-4 bg-white bg-slate-100 border border-zinc-300 border-slate-200 text-zinc-700 text-slate-600 font-medium rounded-lg hover:bg-zinc-50 hover:bg-slate-300 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            <span>🔵</span>
-            {language === "ro" ? "Continuă cu Google" : "Continue with Google"}
-          </button>
+            {isLogin ? (
+              <form onSubmit={handleLoginSubmit} className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    {language === "ro" ? "Email" : "Email"}
+                  </label>
+                  <input
+                    type="email"
+                    value={loginEmail}
+                    onChange={(event) => setLoginEmail(event.target.value)}
+                    required
+                    className="w-full rounded-2xl border border-slate-200 bg-white/78 px-4 py-3 text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    {language === "ro" ? "Parolă" : "Password"}
+                  </label>
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(event) => setLoginPassword(event.target.value)}
+                    required
+                    className="w-full rounded-2xl border border-slate-200 bg-white/78 px-4 py-3 text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-2xl bg-primary px-5 py-3 font-semibold text-white shadow-[0_16px_36px_rgba(240,116,62,0.22)] transition hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  {loading
+                    ? (language === "ro" ? "Se autentifică..." : "Signing in...")
+                    : (language === "ro" ? "Conectează-te" : "Sign in")}
+                </button>
+              </form>
+            ) : registerStage === "credentials" ? (
+              <form onSubmit={continueToProfileQuiz} className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    {language === "ro" ? "Email pentru cont" : "Account email"}
+                  </label>
+                  <input
+                    type="email"
+                    value={registerEmail}
+                    onChange={(event) => setRegisterEmail(event.target.value)}
+                    required
+                    className="w-full rounded-2xl border border-slate-200 bg-white/78 px-4 py-3 text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                    placeholder="email@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    {language === "ro" ? "Parolă" : "Password"}
+                  </label>
+                  <input
+                    type="password"
+                    value={registerPassword}
+                    onChange={(event) => setRegisterPassword(event.target.value)}
+                    required
+                    className="w-full rounded-2xl border border-slate-200 bg-white/78 px-4 py-3 text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                    placeholder="minimum 6 caractere"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    {language === "ro" ? "Confirmă parola" : "Confirm password"}
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    required
+                    className="w-full rounded-2xl border border-slate-200 bg-white/78 px-4 py-3 text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                    placeholder="repetă parola"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-primary px-5 py-3 font-semibold text-white shadow-[0_16px_36px_rgba(240,116,62,0.22)] transition hover:-translate-y-0.5 hover:bg-primary/90"
+                >
+                  {language === "ro" ? "Continuă la quiz-ul de profil" : "Continue to profile quiz"}
+                </button>
+              </form>
+            ) : (
+              <ProfileDetailsWizard
+                key={registerEmail}
+                mode="register"
+                language={language}
+                email={registerEmail}
+                saving={loading}
+                submitLabel={language === "ro" ? "Creează contul complet" : "Create full account"}
+                onExit={() => setRegisterStage("credentials")}
+                onSubmit={handleRegisterSubmit}
+              />
+            )}
+          </main>
         </div>
-
-        <p className="mt-6 text-center text-sm text-zinc-600 text-slate-500">
-          {isLogin 
-            ? (language === "ro" ? "Nu ai cont?" : "Don't have an account?")
-            : (language === "ro" ? "Ai deja cont?" : "Already have an account?")
-          }
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="ml-1 text-emerald-600 text-emerald-600 hover:underline"
-          >
-            {isLogin 
-              ? (language === "ro" ? "Creează unul" : "Sign Up")
-              : (language === "ro" ? "Conectează-te" : "Sign In")
-            }
-          </button>
-        </p>
       </div>
     </div>
   );

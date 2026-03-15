@@ -1,22 +1,13 @@
-/**
- * SlotChatModal - Chat for matched availability slots
- */
-
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  limit,
-  onSnapshot,
-  addDoc,
-  serverTimestamp
-} from "firebase/firestore";
+import { useEffect, useRef, useState } from "react";
+import { addDoc, collection, limit, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { MessageCircle, Send, X } from "lucide-react";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
-import { AvailabilitySlot, sportTypeLabels } from "@/lib/types";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { type FindBuddySlot, getSportLabel } from "@/lib/findBuddy";
+import { sportTypeLabels } from "@/lib/types";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
@@ -31,12 +22,21 @@ interface ChatMessage {
 }
 
 interface SlotChatModalProps {
-  slot: AvailabilitySlot;
-  userId: string | null;
+  slot: FindBuddySlot;
   onClose: () => void;
 }
 
-export default function SlotChatModal({ slot, userId, onClose }: SlotChatModalProps) {
+function getUserNameForSlot(user: User, slot: FindBuddySlot): string {
+  const participantIndex = slot.participants.indexOf(user.uid);
+  if (participantIndex >= 0 && slot.participantNames[participantIndex]) {
+    return slot.participantNames[participantIndex];
+  }
+
+  return user.displayName || "Ethos Member";
+}
+
+export default function SlotChatModal({ slot, onClose }: SlotChatModalProps) {
+  const { language } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -48,13 +48,11 @@ export default function SlotChatModal({ slot, userId, onClose }: SlotChatModalPr
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
+
     return () => unsubscribe();
   }, []);
 
-  // Subscribe to chat messages
   useEffect(() => {
-    if (!slot.id) return;
-
     const chatQuery = query(
       collection(db, `availability_slots/${slot.id}/chat`),
       orderBy("createdAt", "asc"),
@@ -62,130 +60,135 @@ export default function SlotChatModal({ slot, userId, onClose }: SlotChatModalPr
     );
 
     const unsubscribe = onSnapshot(chatQuery, (snapshot) => {
-      const msgs: ChatMessage[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        msgs.push({
-          id: doc.id,
-          userId: data.userId || "",
-          userName: data.userName || "Utilizator",
-          content: data.content || "",
-          type: data.type || "message",
+      const nextMessages: ChatMessage[] = snapshot.docs.map((messageDoc) => {
+        const data = messageDoc.data();
+        return {
+          id: messageDoc.id,
+          userId: typeof data.userId === "string" ? data.userId : "",
+          userName: typeof data.userName === "string" ? data.userName : "Ethos Member",
+          content: typeof data.content === "string" ? data.content : "",
+          type: data.type === "system" ? "system" : "message",
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-        });
+        };
       });
-      setMessages(msgs);
+
+      setMessages(nextMessages);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [slot.id]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !user || !slot.id) return;
-    
+  const sendMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!newMessage.trim() || !user) {
+      return;
+    }
+
     setSending(true);
+
     try {
       await addDoc(collection(db, `availability_slots/${slot.id}/chat`), {
         userId: user.uid,
-        userName: user.displayName || "Utilizator",
+        userName: getUserNameForSlot(user, slot),
         content: newMessage.trim(),
         type: "message",
         createdAt: serverTimestamp(),
       });
       setNewMessage("");
-    } catch (err) {
-      console.error("Error sending message:", err);
+    } catch (error) {
+      console.error("Error sending find buddy message:", error);
     } finally {
       setSending(false);
     }
   };
 
-  const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString("ro-RO", {
+  const formatTimestamp = (date: Date): string => {
+    return date.toLocaleTimeString(language === "ro" ? "ro-RO" : "en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
-  const sport = sportTypeLabels[slot.sportType as keyof typeof sportTypeLabels];
+  const sportEmoji = sportTypeLabels[slot.sportType]?.emoji || "🏃";
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="card p-0 max-w-md w-full max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-200 border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
           <div>
-            <h2 className="font-bold text-zinc-900 text-slate-900">
-              💬 Chat Antrenament
-            </h2>
-            <p className="text-sm text-zinc-500">
-              {sport?.emoji} {sport?.label} - {slot.location.name}
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-emerald-600" />
+              <h2 className="text-lg font-semibold text-slate-900">
+                {language === "ro" ? "Chat sesiune" : "Session chat"}
+              </h2>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              {sportEmoji} {getSportLabel(slot.sportType, language)} • {slot.location.name}
             </p>
-            <p className="text-xs text-zinc-400">
-              📅 {new Date(slot.dateTime).toLocaleDateString("ro-RO")} • 🕐 {new Date(slot.dateTime).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+            <p className="mt-1 text-xs text-slate-500">
+              {slot.dateTime.toLocaleDateString(language === "ro" ? "ro-RO" : "en-US")} •{" "}
+              {slot.dateTime.toLocaleTimeString(language === "ro" ? "ro-RO" : "en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </p>
           </div>
-          <button 
-            onClick={onClose} 
-            className="text-zinc-500 hover:text-zinc-700 hover:text-slate-600 text-2xl"
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
           >
-            ×
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-2 p-4 bg-zinc-50 bg-white min-h-[200px] max-h-[300px]">
+        <div className="min-h-[260px] flex-1 space-y-3 overflow-y-auto bg-slate-50 px-6 py-5">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500"></div>
+            <div className="flex h-full items-center justify-center">
+              <div className="h-7 w-7 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
             </div>
           ) : messages.length === 0 ? (
-            <p className="text-center text-zinc-500 py-4">
-              Încă niciun mesaj. Spune &ldquo;Bună!&rdquo; 👋
-            </p>
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+              {language === "ro" ? "Încă nu există mesaje. Deschide conversația." : "No messages yet. Start the conversation."}
+            </div>
           ) : (
-            messages.map((msg) => {
-              const isOwnMessage = user && msg.userId === user.uid;
-              const isSystem = msg.type === "system";
-              
-              if (isSystem) {
+            messages.map((message) => {
+              if (message.type === "system") {
                 return (
-                  <div 
-                    key={msg.id} 
-                    className="text-center text-xs text-zinc-500 py-2"
+                  <div
+                    key={message.id}
+                    className="mx-auto max-w-[85%] rounded-full bg-white px-4 py-2 text-center text-xs text-slate-500 shadow-sm"
                   >
-                    {msg.content}
+                    {message.content}
                   </div>
                 );
               }
-              
+
+              const isOwnMessage = user?.uid === message.userId;
+
               return (
-                <div 
-                  key={msg.id} 
-                  className={`p-2 rounded-lg ${
-                    isOwnMessage 
-                      ? "bg-emerald-100 bg-emerald-100 ml-8" 
-                      : "bg-zinc-100 bg-slate-100 mr-8"
+                <div
+                  key={message.id}
+                  className={`max-w-[85%] rounded-3xl px-4 py-3 shadow-sm ${
+                    isOwnMessage
+                      ? "ml-auto bg-emerald-600 text-white"
+                      : "bg-white text-slate-700"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-xs font-medium text-zinc-900 text-slate-900">
-                      {msg.userName}
-                    </span>
-                    <span className="text-xs text-zinc-500">
-                      {formatTime(msg.createdAt)}
+                  <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                    <span className={isOwnMessage ? "text-white/80" : "text-slate-500"}>{message.userName}</span>
+                    <span className={isOwnMessage ? "text-white/70" : "text-slate-400"}>
+                      {formatTimestamp(message.createdAt)}
                     </span>
                   </div>
-                  <p className="text-sm text-zinc-700 text-slate-600">
-                    {msg.content}
-                  </p>
+                  <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>
                 </div>
               );
             })
@@ -193,22 +196,21 @@ export default function SlotChatModal({ slot, userId, onClose }: SlotChatModalPr
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Message Input */}
-        <form onSubmit={sendMessage} className="p-4 border-t border-zinc-200 border-slate-200">
-          <div className="flex gap-2">
+        <form onSubmit={sendMessage} className="border-t border-slate-200 px-6 py-4">
+          <div className="flex gap-3">
             <input
               type="text"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Scrie un mesaj..."
-              className="input flex-1"
+              onChange={(event) => setNewMessage(event.target.value)}
+              placeholder={language === "ro" ? "Scrie un mesaj..." : "Write a message..."}
+              className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-400 focus:bg-white"
             />
             <button
               type="submit"
-              disabled={!newMessage.trim() || sending}
-              className="btn-primary px-4"
+              disabled={!newMessage.trim() || sending || !user}
+              className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              ➤
+              <Send className="h-4 w-4" />
             </button>
           </div>
         </form>

@@ -1,91 +1,62 @@
-/**
- * AddAvailabilityForm - Form for creating availability slots
- * 
- * Features:
- * - Sport selection from user's preferred sports
- * - City selection (default from profile)
- * - Date and time picker
- * - Location with price input
- * - Save to Firestore
- */
-
 "use client";
 
-import { useState, useEffect } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { 
-  doc, 
-  getDoc, 
-  addDoc, 
-  collection, 
-  serverTimestamp 
-} from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
-import { 
-  SportType, 
-  GenderPreference, 
-  preferredSportsList,
-  genderPreferenceLabels,
-  PreferredSport,
-  UserProfile,
-  MedicalCondition
-} from "@/lib/types";
+import { createFindBuddySlot, type FindBuddySlot } from "@/lib/findBuddy";
+import { getProfileHeadline, profileNeedsOnboarding, type DetailedUserProfile } from "@/lib/profile";
+import { sportTypeLabels, type GenderPreference, type SportType } from "@/lib/types";
 
-const auth = firebaseAuth;
-const db = firebaseDb;
+const auth = firebaseAuth!;
+const db = firebaseDb!;
 
 interface AddAvailabilityFormProps {
-  onSuccess?: () => void;
+  initialMode?: "duo" | "group";
+  onSuccess?: (slotId?: string) => void;
   onCancel?: () => void;
 }
 
-const cities = [
-  "Bucharest",
+const suggestedCities = [
+  "București",
   "Cluj-Napoca",
   "Timișoara",
   "Iași",
   "Constanța",
-  "Craiova",
   "Brașov",
   "Sibiu",
   "Oradea",
-  "Bacău"
 ];
 
-const durationOptions = [
-  { value: 30, label: "30 min" },
-  { value: 45, label: "45 min" },
-  { value: 60, label: "1 oră" },
-  { value: 90, label: "1h 30min" },
-  { value: 120, label: "2 ore" },
-  { value: 180, label: "3 ore" },
-];
+const durationOptions = [45, 60, 75, 90, 120];
+const duoParticipantOptions = [2];
+const groupParticipantOptions = [4, 6, 10];
 
-const participantOptions = [
-  { value: 1, label: "1 vs 1" },
-  { value: 2, label: "1 vs 2" },
-  { value: 3, label: "1 vs 3" },
-  { value: 4, label: "1 vs 4" },
-  { value: 5, label: "Grup mic (5)" },
-  { value: 10, label: "Grup (10)" },
-];
+function isSupportedSport(value: string): value is SportType {
+  return value in sportTypeLabels;
+}
 
-export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabilityFormProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+export default function AddAvailabilityForm({
+  initialMode = "duo",
+  onSuccess,
+  onCancel,
+}: AddAvailabilityFormProps) {
   const { language } = useLanguage();
-  
-  // Form state
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<DetailedUserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [sessionMode, setSessionMode] = useState<"duo" | "group">(initialMode);
   const [sportType, setSportType] = useState<SportType | "">("");
   const [city, setCity] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState(60);
+  const [maxParticipants, setMaxParticipants] = useState(initialMode === "group" ? 4 : 2);
   const [genderPreference, setGenderPreference] = useState<GenderPreference>("anyone");
-  const [maxParticipants, setMaxParticipants] = useState(1); // Default 1 vs 1
   const [locationName, setLocationName] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
   const [isPaid, setIsPaid] = useState(false);
@@ -93,126 +64,116 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
   const [priceNote, setPriceNote] = useState("");
   const [description, setDescription] = useState("");
 
-  // Fetch user and profile
   useEffect(() => {
-    if (!auth || !db) {
-      setError("Configurație Firebase lipsă. Contactează administratorul.");
-      return;
-    }
-
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      
-      if (currentUser) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            const profile: UserProfile = {
-              birthDate: data.birthDate || "",
-              medicalConditions: (data.medicalConditions || []) as MedicalCondition[],
-              height: data.height || 0,
-              weight: data.weight || 0,
-              gender: data.gender || "other",
-              preferredSports: (data.preferredSports || []) as PreferredSport[],
-              experienceLevel: data.experienceLevel || "beginner",
-              trainsRegularly: data.trainsRegularly || false,
-              goals: data.goals || [],
-              priorityGoal: data.priorityGoal || "",
-              trainingEnvironment: data.trainingEnvironment || "gym",
-              homeEquipment: data.homeEquipment || [],
-              daysPerWeek: data.daysPerWeek || 0,
-              workoutDuration: data.workoutDuration || 0,
-              injuries: data.injuries || [],
-              activityLevel: data.activityLevel || "sedentary",
-              sleepHours: data.sleepHours || 0,
-              stressLevel: data.stressLevel || "low",
-              dailySteps: data.dailySteps || 0,
-              motivationType: data.motivationType || "",
-              city: data.city || "",
-              lookingForBuddy: data.lookingForBuddy || false,
-            };
-            setUserProfile(profile);
-            
-            // Set default city from profile
-            if (data.city) {
-              setCity(data.city);
-            }
-            
-            // Set default sport from preferred sports
-            if (data.preferredSports && data.preferredSports.length > 0) {
-              setSportType(data.preferredSports[0] as SportType);
-            }
-          }
-        } catch (err) {
-          console.error("Error fetching profile:", err);
-        }
-      }
-    });
-    
-    return () => unsubscribe();
-  }, []);
 
-  // Get user's preferred sports as options
-  const userSports = userProfile?.preferredSports || [];
-  const availableSports = userSports.length > 0 
-    ? preferredSportsList.filter(s => userSports.includes(s.value))
-    : preferredSportsList;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    
-    if (!user) {
-      setError("Trebuie să fii autentificat");
-      return;
-    }
-    
-    // Validation
-    if (!sportType || !city || !date || !time || !locationName) {
-      setError("Completează toate câmpurile obligatorii");
-      return;
-    }
-    
-    // Check date is not in the past
-    const dateTime = new Date(`${date}T${time}`);
-    if (dateTime < new Date()) {
-      setError("Data și ora trebuie să fie în viitor");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      if (!db || !auth) {
-        setError("Configurație Firebase lipsă. Contactează administratorul.");
+      if (!currentUser) {
+        setLoadingProfile(false);
         return;
       }
 
-      await addDoc(collection(db, "availability_slots"), {
+      try {
+        const snapshot = await getDoc(doc(db, "users", currentUser.uid));
+        if (snapshot.exists()) {
+          const data = snapshot.data() as DetailedUserProfile;
+          setProfile(data);
+          setCity(data.city || "");
+
+          const supportedSports = (data.preferredSports || []).filter(isSupportedSport);
+          if (supportedSports.length > 0) {
+            setSportType(supportedSports[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading find buddy profile:", err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    setMaxParticipants(sessionMode === "group" ? 4 : 2);
+  }, [sessionMode]);
+
+  const supportedSports = Object.entries(sportTypeLabels).map(([value, details]) => ({
+    value: value as SportType,
+    label: details.label,
+    emoji: details.emoji,
+  }));
+
+  const preferredSports = (profile?.preferredSports || []).filter(isSupportedSport);
+  const availableSports =
+    preferredSports.length > 0
+      ? supportedSports.filter((sport) => preferredSports.includes(sport.value))
+      : supportedSports;
+
+  const participantOptions = sessionMode === "group" ? groupParticipantOptions : duoParticipantOptions;
+  const minDate = new Date().toISOString().split("T")[0];
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+
+    if (!user) {
+      setError(language === "ro" ? "Trebuie să fii autentificat." : "You must be signed in.");
+      return;
+    }
+
+    if (!profile || profileNeedsOnboarding(profile)) {
+      setError(language === "ro" ? "Completează profilul detaliat înainte să creezi un slot." : "Complete the detailed profile before creating a slot.");
+      return;
+    }
+
+    if (!sportType || !city.trim() || !date || !time || !locationName.trim()) {
+      setError(language === "ro" ? "Completează toate câmpurile obligatorii." : "Fill in all required fields.");
+      return;
+    }
+
+    const dateTime = new Date(`${date}T${time}`);
+    if (Number.isNaN(dateTime.getTime()) || dateTime <= new Date()) {
+      setError(language === "ro" ? "Alege o dată și o oră din viitor." : "Choose a future date and time.");
+      return;
+    }
+
+    if (isPaid && price && Number.isNaN(Number(price))) {
+      setError(language === "ro" ? "Prețul trebuie să fie numeric." : "Price must be numeric.");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const slotPayload: Omit<FindBuddySlot, "id" | "status" | "createdAt" | "updatedAt"> = {
         hostId: user.uid,
-        hostName: user.displayName || "Utilizator",
+        hostName: getProfileHeadline(profile),
+        hostExperienceLevel: profile.experienceLevel,
+        hostGoals: profile.goals,
+        hostGender: profile.gender,
+        hostAvatarUrl: user.photoURL || undefined,
         sportType,
-        city,
-        dateTime: dateTime,
+        city: city.trim(),
+        dateTime,
         duration,
-        maxParticipants, // How many buddies can join
-        participants: [user.uid], // Host is already participant
+        maxParticipants,
+        participants: [user.uid],
+        participantNames: [getProfileHeadline(profile)],
         genderPreference,
         location: {
-          name: locationName,
-          address: locationAddress || "",
+          name: locationName.trim(),
+          address: locationAddress.trim(),
           isPaid,
-          price: isPaid && price ? parseFloat(price) : null,
-          priceNote: isPaid ? (priceNote || `${price} RON`) : null,
+          price: isPaid && price ? Number(price) : null,
+          priceNote: isPaid ? (priceNote.trim() || `${price || "0"} RON / persoană`) : null,
         },
-        status: "open",
-        description: description || "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      
-      // Reset form
-      setSportType("");
+        description: description.trim(),
+      };
+
+      const slotId = await createFindBuddySlot(db, slotPayload);
+
       setDate("");
       setTime("");
       setLocationName("");
@@ -221,57 +182,128 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
       setPrice("");
       setPriceNote("");
       setDescription("");
-      
-      if (onSuccess) {
-        onSuccess();
-      }
+      setSessionMode(initialMode);
+      setMaxParticipants(initialMode === "group" ? 4 : 2);
+
+      onSuccess?.(slotId);
     } catch (err) {
-      console.error("Error creating slot:", err);
-      setError("Eroare la crearea slotului. Încearcă din nou.");
+      console.error("Error creating find buddy slot:", err);
+      setError(err instanceof Error ? err.message : "Nu am putut crea slotul.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  // Get today's date for min date
-  const today = new Date().toISOString().split("T")[0];
+  if (loadingProfile) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        {language === "ro" ? "Trebuie să fii autentificat pentru a crea un slot." : "You must be signed in to create a slot."}
+      </div>
+    );
+  }
+
+  if (!profile || profileNeedsOnboarding(profile)) {
+    return (
+      <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+        <p className="font-semibold text-amber-900">
+          {language === "ro" ? "Profil incomplet pentru matching bun" : "Profile incomplete for proper matching"}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-amber-800">
+          {language === "ro"
+            ? "Completează profilul detaliat mai întâi. Logica de find a buddy folosește sporturile preferate, orașul, obiectivele și nivelul tău."
+            : "Complete the detailed profile first. Find a buddy uses your preferred sports, city, goals, and level."}
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="card p-6 max-w-lg mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-zinc-900 text-slate-900">
-          ➕ Creează Slot Available
-        </h2>
-        {onCancel && (
-          <button 
-            onClick={onCancel}
-            className="text-zinc-500 hover:text-zinc-700 hover:text-slate-600"
-          >
-            ✕
-          </button>
-        )}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-900">
+            {language === "ro" ? "Cauți 1 persoană sau grup?" : "Looking for one person or a group?"}
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setSessionMode("duo")}
+              className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                sessionMode === "duo"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-white text-slate-700"
+              }`}
+            >
+              {language === "ro" ? "1 partener" : "1 buddy"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSessionMode("group")}
+              className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                sessionMode === "group"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-white text-slate-700"
+              }`}
+            >
+              {language === "ro" ? "Grup" : "Group"}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-900">
+            {language === "ro" ? "Câte locuri totale?" : "How many total spots?"}
+          </p>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {participantOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setMaxParticipants(option)}
+                className={`rounded-2xl px-3 py-3 text-sm font-medium transition ${
+                  maxParticipants === option
+                    ? "bg-emerald-600 text-white"
+                    : "bg-white text-slate-700"
+                }`}
+              >
+                {language === "ro" ? `Tu +${option - 1}` : `You +${option - 1}`}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            {language === "ro"
+              ? "Capacitatea include și host-ul."
+              : "Capacity includes the host too."}
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Error message */}
-        {error && (
-          <div className="p-3 bg-red-50 bg-red-50 border border-red-200 border-red-200 rounded-lg text-red-600 text-red-600 text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Sport Type */}
+      <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
-            Sport *
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "ro" ? "Sport" : "Sport"} *
           </label>
           <select
             value={sportType}
-            onChange={(e) => setSportType(e.target.value as SportType)}
-            className="input"
+            onChange={(event) => setSportType(event.target.value as SportType)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
             required
           >
-            <option value="">Selectează sportul...</option>
+            <option value="">{language === "ro" ? "Selectează sportul" : "Select sport"}</option>
             {availableSports.map((sport) => (
               <option key={sport.value} value={sport.value}>
                 {sport.emoji} {sport.label}
@@ -280,216 +312,214 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
           </select>
         </div>
 
-        {/* City */}
         <div>
-          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
-            Oraș *
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "ro" ? "Oraș" : "City"} *
           </label>
-          <select
+          <input
+            list="buddy-cities"
             value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className="input"
+            onChange={(event) => setCity(event.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
+            placeholder={language === "ro" ? "București" : "Bucharest"}
             required
-          >
-            <option value="">Selectează orașul...</option>
-            {cities.map((c) => (
-              <option key={c} value={c}>{c}</option>
+          />
+          <datalist id="buddy-cities">
+            {suggestedCities.map((suggestedCity) => (
+              <option key={suggestedCity} value={suggestedCity} />
             ))}
-          </select>
+          </datalist>
         </div>
 
-        {/* Date & Time */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
-              Data *
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              min={today}
-              className="input"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
-              Ora *
-            </label>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="input"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Participants */}
         <div>
-          <label className="block text-sm font-medium text-slate-600 mb-2">
-            👥 {language === "ro" ? "Câți parteneri cauți?" : "How many partners?"}
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {participantOptions.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setMaxParticipants(opt.value)}
-                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                  maxParticipants === opt.value
-                    ? "bg-emerald-500 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Duration */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
-            Durată
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {durationOptions.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setDuration(opt.value)}
-                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                  duration === opt.value
-                    ? "bg-emerald-500 text-white"
-                    : "bg-zinc-100 bg-white text-zinc-600 text-slate-500 hover:bg-zinc-200 hover:bg-slate-200"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Gender Preference */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
-            Preferință gen
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {(["anyone", "M", "F"] as GenderPreference[]).map((pref) => (
-              <button
-                key={pref}
-                type="button"
-                onClick={() => setGenderPreference(pref)}
-                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                  genderPreference === pref
-                    ? "bg-emerald-500 text-white"
-                    : "bg-zinc-100 bg-white text-zinc-600 text-slate-500 hover:bg-zinc-200 hover:bg-slate-200"
-                }`}
-              >
-                {genderPreferenceLabels[pref]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Location */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
-            Locație *
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "ro" ? "Data" : "Date"} *
           </label>
           <input
-            type="text"
+            type="date"
+            min={minDate}
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "ro" ? "Ora" : "Time"} *
+          </label>
+          <input
+            type="time"
+            value={time}
+            onChange={(event) => setTime(event.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "ro" ? "Durată" : "Duration"}
+          </label>
+          <div className="grid grid-cols-5 gap-2">
+            {durationOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setDuration(option)}
+                className={`rounded-2xl px-3 py-3 text-sm font-medium transition ${
+                  duration === option
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {option}m
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "ro" ? "Preferință de gen" : "Gender preference"}
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: "anyone", labelRo: "Oricine", labelEn: "Anyone" },
+              { value: "M", labelRo: "Bărbați", labelEn: "Men" },
+              { value: "F", labelRo: "Femei", labelEn: "Women" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setGenderPreference(option.value as GenderPreference)}
+                className={`rounded-2xl px-3 py-3 text-sm font-medium transition ${
+                  genderPreference === option.value
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {language === "ro" ? option.labelRo : option.labelEn}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "ro" ? "Locație" : "Location"} *
+          </label>
+          <input
             value={locationName}
-            onChange={(e) => setLocationName(e.target.value)}
-            placeholder="Nume locație (ex: Sala Sporturilor)"
-            className="input mb-2"
+            onChange={(event) => setLocationName(event.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
+            placeholder={language === "ro" ? "World Class, Parcul Herăstrău..." : "Gym, park, venue..."}
             required
           />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "ro" ? "Adresă" : "Address"}
+          </label>
           <input
-            type="text"
             value={locationAddress}
-            onChange={(e) => setLocationAddress(e.target.value)}
-            placeholder="Adresă (opțional)"
-            className="input"
+            onChange={(event) => setLocationAddress(event.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
+            placeholder={language === "ro" ? "Adresă sau reper" : "Address or landmark"}
           />
         </div>
+      </div>
 
-        {/* Price Toggle */}
-        <div>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <div 
-              onClick={() => setIsPaid(!isPaid)}
-              className={`w-12 h-6 rounded-full transition-colors ${
-                isPaid ? "bg-emerald-500" : "bg-zinc-300 bg-slate-200"
-              }`}
-            >
-              <div 
-                className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                  isPaid ? "translate-x-6" : "translate-x-0.5"
-                }`}
-              />
-            </div>
-            <span className="text-sm font-medium text-zinc-700 text-slate-600">
-              Locație plătită
-            </span>
-          </label>
-          
-          {isPaid && (
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="Preț (RON)"
-                className="input"
-                min="0"
-                step="1"
-              />
-              <input
-                type="text"
-                value={priceNote}
-                onChange={(e) => setPriceNote(e.target.value)}
-                placeholder="Note (ex: 25 RON/oră)"
-                className="input"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
-            Descriere (opțional)
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Detalii despre sesiune..."
-            className="input min-h-[80px] resize-none"
-            rows={3}
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={isPaid}
+            onChange={(event) => setIsPaid(event.target.checked)}
+            className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
           />
-        </div>
+          <div>
+            <p className="font-medium text-slate-900">
+              {language === "ro" ? "Locația este plătită" : "This location is paid"}
+            </p>
+            <p className="text-sm text-slate-500">
+              {language === "ro" ? "Arată clar costul per persoană." : "Clearly show the per-person cost."}
+            </p>
+          </div>
+        </label>
 
-        {/* Submit Button */}
+        {isPaid && (
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <input
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
+              placeholder={language === "ro" ? "Preț / persoană" : "Price / person"}
+            />
+            <input
+              value={priceNote}
+              onChange={(event) => setPriceNote(event.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
+              placeholder={language === "ro" ? "Notă opțională" : "Optional note"}
+            />
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          {language === "ro" ? "Descriere" : "Description"}
+        </label>
+        <textarea
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          className="min-h-[110px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
+          placeholder={
+            language === "ro"
+              ? "Ex: caut încă 3 oameni pentru baschet, nivel intermediar, ritm relaxat."
+              : "Example: looking for 3 more people for basketball, intermediate level, relaxed pace."
+          }
+        />
+      </div>
+
+      <div className="rounded-3xl bg-emerald-50 p-4">
+        <p className="text-sm font-semibold text-emerald-900">
+          {language === "ro" ? "Rezumat slot" : "Slot summary"}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-emerald-800">
+          {language === "ro"
+            ? `${getProfileHeadline(profile)} caută ${sessionMode === "duo" ? "1 partener" : `până la ${maxParticipants - 1} persoane`} pentru ${sportType ? sportTypeLabels[sportType].label : "sport"} în ${city || "orașul tău"}`
+            : `${getProfileHeadline(profile)} is looking for ${sessionMode === "duo" ? "1 buddy" : `up to ${maxParticipants - 1} people`} for ${sportType ? sportTypeLabels[sportType].label : "a sport"} in ${city || "your city"}`}
+          .
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-2xl border border-slate-200 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            {language === "ro" ? "Anulează" : "Cancel"}
+          </button>
+        )}
         <button
           type="submit"
-          disabled={loading}
-          className="btn-primary w-full py-3 text-base"
+          disabled={saving}
+          className="flex-1 rounded-2xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:bg-slate-300"
         >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-              Se salvează...
-            </span>
-          ) : (
-            "💾 Creează Slot"
-          )}
+          {saving
+            ? (language === "ro" ? "Se salvează..." : "Saving...")
+            : (language === "ro" ? "Publică slotul" : "Publish slot")}
         </button>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }

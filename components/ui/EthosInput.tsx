@@ -13,27 +13,27 @@ const EthosInput = React.forwardRef<HTMLInputElement, EthosInputProps>(
     return (
       <div className="relative">
         {icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
             {icon}
           </div>
         )}
         <input
           type={type}
           className={cn(
-            "flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm",
+            "flex h-12 w-full rounded-2xl border px-4 py-3 text-sm font-medium",
             "ring-offset-background transition-all duration-300",
             "file:border-0 file:bg-transparent file:text-sm file:font-medium",
             "placeholder:text-muted-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             "disabled:cursor-not-allowed disabled:opacity-50",
             // Variant styles
-            variant === "default" && "border-input",
-            variant === "filled" && "border-transparent bg-secondary",
-            variant === "outline" && "border-2 border-primary/50",
+            variant === "default" && "border-input bg-background/85 backdrop-blur",
+            variant === "filled" && "border-transparent bg-secondary/90",
+            variant === "outline" && "border-primary/40 bg-white/80",
             // Error state
             error && "border-destructive focus-visible:ring-destructive",
             // Icon offset
-            icon && "pl-10",
+            icon && "pl-11",
             className
           )}
           ref={ref}

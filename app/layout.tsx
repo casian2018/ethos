@@ -1,17 +1,24 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Cormorant_Garamond, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/contexts/LanguageContext";
 
-const inter = Inter({
-  variable: "--font-inter",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
   display: "swap",
 });
 
+const cormorantGaramond = Cormorant_Garamond({
+  variable: "--font-cormorant",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Ethos - Your Fitness Journey",
-  description: "Connect with fitness enthusiasts, track your workouts, and achieve your goals together.",
+  title: "Ethos",
+  description: "Athletic training, nutrition, recovery, and community in one distinctive fitness product.",
   keywords: ["fitness", "workout", "gym", "buddy", "community"],
 };
 
@@ -21,10 +28,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <body className="font-sans antialiased min-h-screen bg-background">
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${cormorantGaramond.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="ethos-root min-h-screen font-sans antialiased bg-background text-foreground">
         <LanguageProvider>
-          {/* No Sidebar on landing page and auth pages */}
           {children}
         </LanguageProvider>
       </body>

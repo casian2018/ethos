@@ -1,190 +1,234 @@
-/**
- * Find a Buddy - Advanced Matchmaking System
- * 
- * Features:
- * - Add Availability Form (Sport, City, Time, Location, Gender)
- * - Coach Mark Tooltip explaining how it works
- * - Feed navigation
- * 
- * Route: /dev/find_a_buddy
- */
-
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
+import { Users, UserRoundSearch, Compass, CalendarDays } from "lucide-react";
+import { auth as firebaseAuth } from "@/lib/firebase";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import AddAvailabilityForm from "@/components/features/find-a-buddy/AddAvailabilityForm";
 
 const auth = firebaseAuth!;
-const db = firebaseDb!;
 
 export default function FindBuddyPage() {
   const router = useRouter();
-  const { t, language } = useLanguage();
-  const [userId, setUserId] = useState<string | null>(null);
+  const { language } = useLanguage();
   const [showForm, setShowForm] = useState(false);
-  const [showCoachMark, setShowCoachMark] = useState(true);
-
-  // Hide coach mark after first interaction
-  useEffect(() => {
-    const hasSeenCoachMark = localStorage.getItem("ethos_coachmark_fab");
-    if (hasSeenCoachMark) {
-      setShowCoachMark(false);
+  const [initialMode, setInitialMode] = useState<"duo" | "group">("duo");
+  const [showCoachMark, setShowCoachMark] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
     }
-  }, []);
 
-  const handleCloseCoachMark = () => {
-    setShowCoachMark(false);
-    localStorage.setItem("ethos_coachmark_fab", "true");
-  };
+    return !localStorage.getItem("ethos_coachmark_fab");
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        router.push("/auth");
-        return;
+        router.replace("/auth");
       }
-      setUserId(user.uid);
     });
 
     return () => unsubscribe();
   }, [router]);
 
-  const handleFormSuccess = () => {
-    setShowForm(false);
-    router.push("/dev/find_a_buddy/feed");
+  const closeCoachMark = () => {
+    setShowCoachMark(false);
+    localStorage.setItem("ethos_coachmark_fab", "true");
+  };
+
+  const startFlow = (mode: "duo" | "group") => {
+    setInitialMode(mode);
+    setShowForm(true);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">
-            {language === "ro" ? "Găsește un Partener" : "Find a Buddy"}
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-emerald-50">
+      <div className="mx-auto max-w-6xl px-4 py-10">
+        <header className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Find a buddy</p>
+          <h1 className="mt-4 text-4xl font-bold text-slate-900">
+            {language === "ro" ? "Găsește oameni reali pentru sportul tău" : "Find real people for your sport"}
           </h1>
-          <p className="text-slate-500 mt-2">
-            {language === "ro" 
-              ? "Antrenează-te cu persoane care au același program ca tine"
-              : "Train with people who have the same schedule as you"}
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            {language === "ro"
+              ? "Fluxul este gândit pentru două cazuri: cauți exact 1 om pentru un sport sau cauți mai mulți pentru o sesiune de grup. Sloturile create aici ajung apoi în feed-ul cu filtre și match score."
+              : "The flow supports two cases: you either need exactly one person for a sport or several people for a group session. The slots created here then appear in the feed with filters and match score."}
           </p>
-        </div>
+        </header>
 
-        {/* Coach Mark Tooltip */}
         {showCoachMark && (
-          <div className="relative mb-8">
-            <div className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl p-6 text-white shadow-lg animate-pulse">
-              <div className="flex items-start gap-4">
-                <div className="text-4xl">🎯</div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg mb-2">
-                    {language === "ro" ? "Cum funcționează?" : "How it works?"}
-                  </h3>
-                  <p className="text-white/90 text-sm">
-                    {language === "ro" 
-                      ? "Postează ora la care ești liber și noi îți găsim partenerul perfect de antrenament!"
-                      : "Post the time you're available and we'll find you the perfect workout partner!"}
-                  </p>
-                </div>
-                <button 
-                  onClick={handleCloseCoachMark}
-                  className="text-white/80 hover:text-white"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Animated arrow */}
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
-                <div className="w-6 h-6 bg-gradient-to-r from-emerald-500 to-blue-500 rotate-45"></div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main Action Button */}
-        {!showForm ? (
-          <div className="text-center">
+          <div className="relative mt-6 rounded-[28px] bg-gradient-to-r from-emerald-500 to-sky-500 p-6 text-white shadow-xl">
             <button
-              onClick={() => setShowForm(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all hover:shadow-lg hover:shadow-emerald-200 flex items-center gap-3 mx-auto"
+              type="button"
+              onClick={closeCoachMark}
+              className="absolute right-4 top-4 text-white/80 hover:text-white"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {language === "ro" ? "Adaugă Disponibilitate" : "Add Availability"}
+              ×
             </button>
-            
-            <p className="text-slate-500 text-sm mt-3">
-              {language === "ro" 
-                ? "Alege sportul, orașul, ora și locația"
-                : "Choose sport, city, time and location"}
-            </p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-900">
-                {language === "ro" ? "Crează un slot de disponibilitate" : "Create availability slot"}
-              </h2>
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+            <div className="flex items-start gap-4">
+              <Compass className="mt-1 h-6 w-6" />
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {language === "ro" ? "Cum funcționează bine acest modul" : "How this module works best"}
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/90">
+                  {language === "ro"
+                    ? "Publici un slot cu sport, oraș, dată și numărul de locuri. Feed-ul îl filtrează, îl punctează după compatibilitate și permite intrarea într-un slot de 1 la 1 sau într-un grup."
+                    : "You publish a slot with sport, city, date, and seat count. The feed then filters it, scores compatibility, and lets people join a one-on-one or a group slot."}
+                </p>
+              </div>
             </div>
-            
-            <AddAvailabilityForm 
-              onSuccess={handleFormSuccess}
-              onCancel={() => setShowForm(false)}
-            />
           </div>
         )}
 
-        {/* Browse Feed Button */}
-        <div className="mt-8 text-center">
-          <Link
-            href="/dev/find_a_buddy/feed"
-            className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-medium"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            {language === "ro" ? "Vezi disponibilitățile altora" : "Browse others' availability"}
-          </Link>
-        </div>
+        <section className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
+            {!showForm ? (
+              <>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => startFlow("duo")}
+                    className="rounded-[32px] border border-slate-200 bg-white p-8 text-left shadow-lg shadow-slate-200/40 transition hover:-translate-y-0.5 hover:border-emerald-300"
+                  >
+                    <UserRoundSearch className="h-10 w-10 text-emerald-600" />
+                    <h2 className="mt-6 text-2xl font-bold text-slate-900">
+                      {language === "ro" ? "Caut 1 persoană" : "I need 1 person"}
+                    </h2>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      {language === "ro"
+                        ? "Ideal pentru sală, tenis, alergare, înot sau orice sesiune în doi."
+                        : "Ideal for gym, tennis, running, swimming, or any one-on-one session."}
+                    </p>
+                    <p className="mt-6 text-sm font-semibold text-emerald-600">
+                      {language === "ro" ? "Deschide formularul pentru 1 partener →" : "Open 1-buddy form →"}
+                    </p>
+                  </button>
 
-        {/* Stats Section */}
-        <div className="mt-12 grid grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl p-4 text-center border border-slate-200">
-            <div className="text-2xl font-bold text-emerald-500">🏃</div>
-            <div className="text-sm text-slate-600 mt-1">
-              {language === "ro" ? "Sport" : "Sports"}
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => startFlow("group")}
+                    className="rounded-[32px] border border-slate-200 bg-white p-8 text-left shadow-lg shadow-slate-200/40 transition hover:-translate-y-0.5 hover:border-emerald-300"
+                  >
+                    <Users className="h-10 w-10 text-sky-600" />
+                    <h2 className="mt-6 text-2xl font-bold text-slate-900">
+                      {language === "ro" ? "Caut mai mulți" : "I need a group"}
+                    </h2>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      {language === "ro"
+                        ? "Potrivit pentru baschet, fotbal, volei sau orice sesiune unde ai nevoie de mai multe locuri."
+                        : "Best for basketball, football, volleyball, or any session where you need multiple spots."}
+                    </p>
+                    <p className="mt-6 text-sm font-semibold text-sky-600">
+                      {language === "ro" ? "Deschide formularul pentru grup →" : "Open group form →"}
+                    </p>
+                  </button>
+                </div>
+
+                <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/40">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-3xl bg-slate-50 p-4">
+                      <CalendarDays className="h-6 w-6 text-emerald-600" />
+                      <p className="mt-3 font-semibold text-slate-900">
+                        {language === "ro" ? "Sloturi cu dată exactă" : "Exact-date slots"}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        {language === "ro" ? "Nu doar profiluri, ci sesiuni reale la care te poți alătura." : "Not just profiles, but real sessions you can join."}
+                      </p>
+                    </div>
+                    <div className="rounded-3xl bg-slate-50 p-4">
+                      <Compass className="h-6 w-6 text-sky-600" />
+                      <p className="mt-3 font-semibold text-slate-900">
+                        {language === "ro" ? "Filtre și căutare" : "Search and filters"}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        {language === "ro" ? "Poți filtra după sport, oraș și tipul slotului: duo sau grup." : "You can filter by sport, city, and slot type: duo or group."}
+                      </p>
+                    </div>
+                    <div className="rounded-3xl bg-slate-50 p-4">
+                      <Users className="h-6 w-6 text-violet-600" />
+                      <p className="mt-3 font-semibold text-slate-900">
+                        {language === "ro" ? "Compatibilitate reală" : "Real compatibility"}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        {language === "ro" ? "Match score-ul folosește orașul, sporturile, obiectivele și nivelul tău." : "Match score uses your city, sports, goals, and level."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50">
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">
+                      {initialMode === "duo"
+                        ? (language === "ro" ? "Creează un slot pentru 1 partener" : "Create a 1-buddy slot")
+                        : (language === "ro" ? "Creează un slot de grup" : "Create a group slot")}
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                      {language === "ro"
+                        ? "Poți ajusta oricând modul și numărul de locuri din formular."
+                        : "You can still change the mode and seat count inside the form."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    {language === "ro" ? "Închide" : "Close"}
+                  </button>
+                </div>
+
+                <AddAvailabilityForm
+                  initialMode={initialMode}
+                  onCancel={() => setShowForm(false)}
+                  onSuccess={() => {
+                    setShowForm(false);
+                    router.push("/dev/find_a_buddy/feed");
+                  }}
+                />
+              </div>
+            )}
           </div>
-          <div className="bg-white rounded-xl p-4 text-center border border-slate-200">
-            <div className="text-2xl font-bold text-blue-500">🏙️</div>
-            <div className="text-sm text-slate-600 mt-1">
-              {language === "ro" ? "10+ Orașe" : "10+ Cities"}
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-4 text-center border border-slate-200">
-            <div className="text-2xl font-bold text-purple-500">🤝</div>
-            <div className="text-sm text-slate-600 mt-1">
-              {language === "ro" ? "Match" : "Match"}
-            </div>
-          </div>
-        </div>
+
+          <aside className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">
+              {language === "ro" ? "Flux recomandat" : "Recommended flow"}
+            </p>
+            <ol className="mt-6 space-y-5">
+              <li className="rounded-3xl bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">1. {language === "ro" ? "Alegi dacă vrei 1 om sau grup" : "Pick duo or group"}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {language === "ro" ? "Asta setează capacitatea slotului și modul în care apare în feed." : "This sets slot capacity and how it appears in the feed."}
+                </p>
+              </li>
+              <li className="rounded-3xl bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">2. {language === "ro" ? "Publici slotul" : "Publish the slot"}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {language === "ro" ? "Sport, dată, durată, oraș, locație și condițiile slotului." : "Sport, date, duration, city, venue, and slot conditions."}
+                </p>
+              </li>
+              <li className="rounded-3xl bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">3. {language === "ro" ? "Feed-ul găsește oameni" : "The feed finds people"}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {language === "ro" ? "Poți filtra și intra doar în sloturile potrivite sau cu locuri libere." : "You can filter and join only the relevant open slots."}
+                </p>
+              </li>
+            </ol>
+
+            <Link
+              href="/dev/find_a_buddy/feed"
+              className="mt-8 inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              {language === "ro" ? "Intră direct în feed" : "Go directly to the feed"}
+            </Link>
+          </aside>
+        </section>
       </div>
     </div>
   );

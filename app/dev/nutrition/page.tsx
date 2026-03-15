@@ -1,733 +1,1160 @@
-/**
- * Nutrition Page - Meal Planning & Calorie Tracking
- * 
- * Features:
- * - Daily calorie calculator based on user profile
- * - Food logging with Gemini API for calorie estimation
- * - Meal plan generation based on goals
- * - Daily nutrition summary
- */
-
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useState, useEffect } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { 
-  doc, 
-  getDoc, 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
   getDocs,
-  serverTimestamp 
+  orderBy,
+  query,
+  serverTimestamp,
+  where,
 } from "firebase/firestore";
-import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
-import { useLanguage } from "@/lib/contexts/LanguageContext";
-import { 
-  Apple, 
-  UtensilsCrossed, 
-  Plus, 
-  Flame, 
-  Target, 
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import {
+  Apple,
+  Camera,
+  CheckCircle2,
   ChefHat,
-  Loader2,
-  Save,
-  Trash2,
   Coffee,
-  Sun,
+  Droplets,
+  Flame,
+  Loader2,
   Moon,
+  Plus,
+  ShieldAlert,
+  Sparkles,
+  Sun,
+  Target,
+  UtensilsCrossed,
+  X,
 } from "lucide-react";
+import Link from "next/link";
+import { auth as firebaseAuth, db as firebaseDb, storage as firebaseStorage } from "@/lib/firebase";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
+import {
+  calculateNutritionTargets,
+  dietaryPreferenceOptions,
+  formatTagList,
+  getGoalModeFromGoals,
+  getOptionLabel,
+  goalOptions,
+  profileNeedsOnboarding,
+  type DetailedUserProfile,
+  type GoalMode,
+  type NutritionTargets,
+} from "@/lib/profile";
+import {
+  buildFallbackMealPlan,
+  fallbackAnalyzeNutrition,
+  getDietPlanSuggestions,
+  getMealTypeLabel,
+  type MealType,
+  type NutritionAnalysis,
+  type NutritionMealPlan,
+} from "@/lib/nutrition";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
-
-interface UserProfile {
-  birthDate: string;
-  gender: "male" | "female" | "other";
-  height: number;
-  weight: number;
-  goals: string[];
-  priorityGoal: string;
-}
+const storage = firebaseStorage;
 
 interface FoodEntry {
   id?: string;
   name: string;
+  rawDescription?: string;
+  quantityText?: string;
+  estimatedWeightGrams?: number;
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
-  mealType: "breakfast" | "lunch" | "dinner" | "snack";
-  timestamp: any;
+  fiber?: number;
+  sugar?: number;
+  sodiumMg?: number;
+  hydrationMl?: number;
+  recognizedFoods?: string[];
+  warnings?: string[];
+  analysisNotes?: string;
+  analysisConfidence?: "low" | "medium" | "high";
+  analysisSource?: string;
+  imageUrl?: string;
+  mealType: MealType;
+  timestamp: unknown;
 }
 
-interface MealPlan {
-  breakfast: string[];
-  lunch: string[];
-  dinner: string[];
-  snacks: string[];
+type StatusMessage = {
+  type: "error" | "success" | "info";
+  text: string;
+};
+
+function StatusBanner({ message }: { message: StatusMessage | null }) {
+  if (!message) {
+    return null;
+  }
+
+  const styles =
+    message.type === "error"
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : message.type === "success"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : "border-sky-200 bg-sky-50 text-sky-700";
+
+  const Icon = message.type === "error" ? ShieldAlert : message.type === "success" ? CheckCircle2 : Sparkles;
+
+  return (
+    <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${styles}`}>
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>{message.text}</p>
+    </div>
+  );
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      resolve(result.split(",")[1] || "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function getAnalysisSourceLabel(source: string | undefined, language: "ro" | "en"): string {
+  if (source === "gemini-image") {
+    return language === "ro" ? "AI foto" : "AI photo";
+  }
+
+  if (source === "gemini-multimodal") {
+    return language === "ro" ? "AI foto + text" : "AI photo + text";
+  }
+
+  if (source === "gemini-text") {
+    return language === "ro" ? "AI text" : "AI text";
+  }
+
+  return language === "ro" ? "Fallback" : "Fallback";
+}
+
+function getConfidenceLabel(confidence: string | undefined, language: "ro" | "en"): string {
+  if (confidence === "high") {
+    return language === "ro" ? "încredere mare" : "high confidence";
+  }
+
+  if (confidence === "low") {
+    return language === "ro" ? "încredere redusă" : "low confidence";
+  }
+
+  return language === "ro" ? "încredere medie" : "medium confidence";
+}
+
+function getMealIcon(slot: MealType) {
+  if (slot === "breakfast") {
+    return Coffee;
+  }
+
+  if (slot === "lunch") {
+    return Sun;
+  }
+
+  if (slot === "dinner") {
+    return Moon;
+  }
+
+  return Apple;
 }
 
 export default function NutritionPage() {
   const { language } = useLanguage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<DetailedUserProfile | null>(null);
+  const [needsProfile, setNeedsProfile] = useState(false);
+  const [targets, setTargets] = useState<NutritionTargets | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"tracker" | "plan">("tracker");
-  
-  // Calorie calculations
-  const [dailyCalories, setDailyCalories] = useState(2000);
-  const [goalType, setGoalType] = useState<"lose" | "maintain" | "gain">("maintain");
+  const [goalType, setGoalType] = useState<GoalMode>("maintain");
   const [caloriesConsumed, setCaloriesConsumed] = useState(0);
-  const [macros, setMacros] = useState({ protein: 0, carbs: 0, fat: 0 });
-  
-  // Food logging
-  const [foodInput, setFoodInput] = useState("");
-  const [selectedMealType, setSelectedMealType] = useState<"breakfast" | "lunch" | "dinner" | "snack">("lunch");
+  const [macrosConsumed, setMacrosConsumed] = useState({ protein: 0, carbs: 0, fat: 0 });
+  const [foodDescription, setFoodDescription] = useState("");
+  const [quantityText, setQuantityText] = useState("");
+  const [selectedMealType, setSelectedMealType] = useState<MealType>("lunch");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
   const [todayEntries, setTodayEntries] = useState<FoodEntry[]>([]);
-  
-  // Meal plan
+  const [lastAnalysis, setLastAnalysis] = useState<NutritionAnalysis | null>(null);
+  const [trackerMessage, setTrackerMessage] = useState<StatusMessage | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
-  const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
-  const [generatedPlanText, setGeneratedPlanText] = useState("");
+  const [generatedPlan, setGeneratedPlan] = useState<NutritionMealPlan | null>(null);
+  const [planMessage, setPlanMessage] = useState<StatusMessage | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        await loadUserProfile(currentUser.uid);
-        await loadTodayEntries(currentUser.uid);
+      if (!currentUser) {
+        setLoading(false);
+        setNeedsProfile(true);
+        return;
       }
-      setLoading(false);
+
+      setUser(currentUser);
+
+      try {
+        const profileDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (!profileDoc.exists()) {
+          setNeedsProfile(true);
+        } else {
+          const data = profileDoc.data() as DetailedUserProfile;
+          if (profileNeedsOnboarding(data)) {
+            setNeedsProfile(true);
+          } else {
+            setProfile(data);
+            setGoalType(getGoalModeFromGoals(data.goals, data.priorityGoal));
+            await loadTodayEntries(currentUser.uid);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading detailed profile:", err);
+        setNeedsProfile(true);
+      } finally {
+        setLoading(false);
+      }
     });
+
     return () => unsubscribe();
   }, []);
 
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const profileDoc = await getDoc(doc(db, "users", userId));
-      if (profileDoc.exists()) {
-        const data = profileDoc.data() as UserProfile;
-        setProfile(data);
-        calculateCalories(data);
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    setTargets(calculateNutritionTargets(profile, goalType));
+  }, [goalType, profile]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
-    } catch (err) {
-      console.error("Error loading profile:", err);
-      // Use default values
-      calculateCalories({
-        birthDate: "1990-01-01",
-        gender: "male",
-        height: 175,
-        weight: 75,
-        goals: ["fitness"],
-        priorityGoal: "fitness"
-      });
-    }
-  };
-
-  const calculateCalories = (profile: UserProfile) => {
-    // Calculate age from birthDate
-    const birthDate = new Date(profile.birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-
-    // Mifflin-St Jeor Equation
-    let bmr: number;
-    if (profile.gender === "male") {
-      bmr = 10 * profile.weight + 6.25 * profile.height - 5 * age + 5;
-    } else {
-      bmr = 10 * profile.weight + 6.25 * profile.height - 5 * age - 161;
-    }
-
-    // Base daily calories (sedentary to lightly active)
-    const tdee = Math.round(bmr * 1.4);
-    
-    // Adjust based on goal
-    let targetCalories: number;
-    switch (goalType) {
-      case "lose":
-        targetCalories = tdee - 500;
-        break;
-      case "gain":
-        targetCalories = tdee + 300;
-        break;
-      default:
-        targetCalories = tdee;
-    }
-    
-    setDailyCalories(targetCalories);
-  };
+    };
+  }, [previewUrl]);
 
   const loadTodayEntries = async (userId: string) => {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const entriesQuery = query(
         collection(db, "food_entries"),
         where("userId", "==", userId),
         where("date", "==", today.toISOString().split("T")[0]),
         orderBy("timestamp", "desc")
       );
-      
+
       const snapshot = await getDocs(entriesQuery);
       const entries: FoodEntry[] = [];
-      let totalCals = 0;
+      let totalCalories = 0;
       let totalProtein = 0;
       let totalCarbs = 0;
       let totalFat = 0;
-      
-      snapshot.forEach((doc) => {
-        const data = doc.data() as FoodEntry;
-        entries.push({ id: doc.id, ...data });
-        totalCals += data.calories || 0;
+
+      snapshot.forEach((entryDoc) => {
+        const data = entryDoc.data() as FoodEntry;
+        entries.push({ id: entryDoc.id, ...data });
+        totalCalories += data.calories || 0;
         totalProtein += data.protein || 0;
         totalCarbs += data.carbs || 0;
         totalFat += data.fat || 0;
       });
-      
+
       setTodayEntries(entries);
-      setCaloriesConsumed(totalCals);
-      setMacros({ protein: totalProtein, carbs: totalCarbs, fat: totalFat });
+      setCaloriesConsumed(totalCalories);
+      setMacrosConsumed({ protein: totalProtein, carbs: totalCarbs, fat: totalFat });
     } catch (err) {
-      console.error("Error loading entries:", err);
+      console.error("Error loading food entries:", err);
     }
   };
 
+  const clearSelectedImage = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setSelectedImage(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleImageSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setTrackerMessage({
+        type: "error",
+        text: language === "ro" ? "Selectează un fișier imagine." : "Select an image file.",
+      });
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setTrackerMessage({
+        type: "error",
+        text: language === "ro" ? "Imaginea trebuie să aibă sub 8MB." : "The image must be smaller than 8MB.",
+      });
+      return;
+    }
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setSelectedImage(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setTrackerMessage(null);
+  };
+
   const logFood = async () => {
-    if (!foodInput.trim() || !user) return;
-    
+    if (!user || !profile) {
+      return;
+    }
+
+    if (!foodDescription.trim() && !selectedImage) {
+      setTrackerMessage({
+        type: "error",
+        text: language === "ro" ? "Adaugă descrierea mesei sau o poză." : "Add a meal description or a photo.",
+      });
+      return;
+    }
+
     setIsLogging(true);
+    setTrackerMessage(null);
+
     try {
-      // Use Gemini API to estimate calories (simulated for now)
-      // In production, this would call the actual Gemini API
-      const estimatedCalories = estimateCalories(foodInput);
-      const estimatedMacros = estimateMacros(foodInput, estimatedCalories);
-      
+      let analysis: NutritionAnalysis;
+      let infoMessage = "";
+
+      try {
+        const imageBase64 = selectedImage ? await readFileAsBase64(selectedImage) : "";
+        const response = await fetch("/api/nutrition/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: foodDescription.trim(),
+            quantityText: quantityText.trim(),
+            imageBase64,
+            imageMimeType: selectedImage?.type || "",
+            language,
+            dietaryPreference: profile.dietaryPreference,
+            allergies: profile.foodAllergies,
+            foodsToAvoid: profile.foodsToAvoid,
+          }),
+        });
+
+        const payload = (await response.json()) as {
+          analysis?: NutritionAnalysis;
+          warning?: string;
+          error?: string;
+          usedFallback?: boolean;
+        };
+
+        if (!response.ok || !payload.analysis) {
+          throw new Error(payload.error || "Failed to analyze meal.");
+        }
+
+        analysis = payload.analysis;
+        infoMessage = payload.warning || "";
+      } catch (error) {
+        if (!foodDescription.trim()) {
+          throw error;
+        }
+
+        analysis = fallbackAnalyzeNutrition({
+          description: foodDescription.trim(),
+          quantityText: quantityText.trim(),
+          language,
+        });
+        infoMessage =
+          language === "ro"
+            ? "Gemini nu a fost disponibil. A fost folosită estimarea fallback din text."
+            : "Gemini was unavailable. A fallback text estimate was used.";
+      }
+
+      let imageUrl = "";
+      if (selectedImage && storage) {
+        const safeName = selectedImage.name.replace(/\s+/g, "_");
+        const storageRef = ref(storage, `nutrition/${user.uid}/${Date.now()}_${safeName}`);
+        await uploadBytes(storageRef, selectedImage);
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
       const today = new Date().toISOString().split("T")[0];
-      
       await addDoc(collection(db, "food_entries"), {
         userId: user.uid,
-        name: foodInput,
-        calories: estimatedCalories,
-        protein: estimatedMacros.protein,
-        carbs: estimatedMacros.carbs,
-        fat: estimatedMacros.fat,
+        name: analysis.displayName,
+        rawDescription: foodDescription.trim() || analysis.displayName,
+        quantityText: analysis.portionDescription || quantityText.trim(),
+        estimatedWeightGrams: analysis.estimatedWeightGrams,
+        calories: analysis.calories,
+        protein: analysis.protein,
+        carbs: analysis.carbs,
+        fat: analysis.fat,
+        fiber: analysis.fiber,
+        sugar: analysis.sugar,
+        sodiumMg: analysis.sodiumMg,
+        hydrationMl: analysis.hydrationMl,
+        recognizedFoods: analysis.recognizedFoods,
+        warnings: analysis.warnings,
+        analysisNotes: analysis.reasoning,
+        analysisConfidence: analysis.confidence,
+        analysisSource: analysis.analysisSource,
         mealType: selectedMealType,
+        imageUrl,
         date: today,
         timestamp: serverTimestamp(),
       });
-      
-      setFoodInput("");
+
+      setLastAnalysis(analysis);
+      setFoodDescription("");
+      setQuantityText("");
+      clearSelectedImage();
       await loadTodayEntries(user.uid);
+
+      setTrackerMessage(
+        infoMessage
+          ? { type: "info", text: infoMessage }
+          : {
+              type: "success",
+              text:
+                language === "ro"
+                  ? "Masa a fost analizată și logată cu succes."
+                  : "The meal was analyzed and logged successfully.",
+            }
+      );
     } catch (err) {
       console.error("Error logging food:", err);
+      setTrackerMessage({
+        type: "error",
+        text:
+          language === "ro"
+            ? "Nu am putut analiza masa. Încearcă o descriere mai clară sau o poză mai bună."
+            : "The meal could not be analyzed. Try a clearer description or a better photo.",
+      });
     } finally {
       setIsLogging(false);
     }
   };
 
-  // Simple calorie estimation based on common foods
-  const estimateCalories = (food: string): number => {
-    const foodLower = food.toLowerCase();
-    
-    // Common foods database (simplified)
-    const foodDatabase: Record<string, number> = {
-      "ou": 70,
-      "oua": 70,
-      "egg": 70,
-      "pain": 80,
-      "bread": 80,
-      "lapte": 150,
-      "milk": 150,
-      "carne": 200,
-      "meat": 200,
-      "pui": 165,
-      "chicken": 165,
-      "rice": 130,
-      "orez": 130,
-      "paste": 130,
-      "pasta": 130,
-      "salata": 30,
-      "salad": 30,
-      "banana": 105,
-      "mar": 95,
-      "apple": 95,
-      "iaurt": 100,
-      "yogurt": 100,
-      "branza": 110,
-      "cheese": 110,
-      "cartofi": 80,
-      "potatoes": 80,
-      "legume": 50,
-      "vegetables": 50,
-      "ulei": 120,
-      "oil": 120,
-      "unt": 100,
-      "butter": 100,
-      "avocado": 160,
-      "nuci": 180,
-      "nuts": 180,
-      "miere": 60,
-      "honey": 60,
-      "ciocolata": 230,
-      "chocolate": 230,
-    };
-    
-    // Check for partial matches
-    for (const [key, value] of Object.entries(foodDatabase)) {
-      if (foodLower.includes(key)) {
-        return value;
-      }
-    }
-    
-    // Default estimation
-    return 150;
-  };
-
-  const estimateMacros = (food: string, calories: number) => {
-    const foodLower = food.toLowerCase();
-    
-    // Protein-rich foods
-    if (foodLower.includes("ou") || foodLower.includes("egg") || 
-        foodLower.includes("carne") || foodLower.includes("meat") ||
-        foodLower.includes("pui") || foodLower.includes("chicken") ||
-        foodLower.includes("branza") || foodLower.includes("cheese")) {
-      return { protein: Math.round(calories * 0.4), carbs: Math.round(calories * 0.1), fat: Math.round(calories * 0.2) };
-    }
-    
-    // Carb-rich foods
-    if (foodLower.includes("pain") || foodLower.includes("bread") ||
-        foodLower.includes("rice") || foodLower.includes("orez") ||
-        foodLower.includes("paste") || foodLower.includes("pasta") ||
-        foodLower.includes("cartofi") || foodLower.includes("potatoes")) {
-      return { protein: Math.round(calories * 0.1), carbs: Math.round(calories * 0.6), fat: Math.round(calories * 0.1) };
-    }
-    
-    // Fat-rich foods
-    if (foodLower.includes("avocado") || foodLower.includes("nuci") ||
-        foodLower.includes("nuts") || foodLower.includes("ulei") ||
-        foodLower.includes("oil") || foodLower.includes("unt") ||
-        foodLower.includes("butter")) {
-      return { protein: Math.round(calories * 0.05), carbs: Math.round(calories * 0.1), fat: Math.round(calories * 0.7) };
-    }
-    
-    // Default balanced
-    return { protein: Math.round(calories * 0.2), carbs: Math.round(calories * 0.4), fat: Math.round(calories * 0.2) };
-  };
-
   const generateMealPlan = async () => {
-    if (!profile) return;
-    
+    if (!profile || !targets) {
+      return;
+    }
+
     setIsGeneratingPlan(true);
+    setPlanMessage(null);
+
     try {
-      // Generate a simple meal plan based on goal
-      const plan: MealPlan = {
-        breakfast: language === "ro" 
-          ? ["Ovăz cu lapte și fructe", "Ouă brăzate cu pâine integrală", "Iaurt greek cu nuci"]
-          : ["Oatmeal with milk and fruits", "Scrambled eggs with whole grain bread", "Greek yogurt with nuts"],
-        lunch: language === "ro"
-          ? ["Piept de pui cu orez și legume", "Salată cu carne și quinoa", "Pește la cuptor cu cartofi"]
-          : ["Chicken breast with rice and vegetables", "Salad with meat and quinoa", "Baked fish with potatoes"],
-        dinner: language === "ro"
-          ? ["Supă de legume", "Salată verde cu brânză", "Legume la grătar cu iaurt"]
-          : ["Vegetable soup", "Green salad with cheese", "Grilled vegetables with yogurt"],
-        snacks: language === "ro"
-          ? ["Banana", "Mere cu arahide", "Iaurt"]
-          : ["Banana", "Apple with peanuts", "Yogurt"]
+      const response = await fetch("/api/nutrition/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile: { ...profile, mealsPerDay: Math.max(3, Math.min(profile.mealsPerDay || 4, 6)) },
+          targets,
+          language,
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        plan?: NutritionMealPlan;
+        warning?: string;
+        error?: string;
+        usedFallback?: boolean;
       };
-      
-      setMealPlan(plan);
-      
-      // Generate detailed plan text with Gemini-style formatting
-      const planText = language === "ro"
-        ? `# Plan Alimentar Zilnic (${dailyCalories} kcal)\n\n## Mic Dejun\n${plan.breakfast.join("\n")}\n\n## Prânz\n${plan.lunch.join("\n")}\n\n## Cină\n${plan.dinner.join("\n")}\n\n## Gustări\n${plan.snacks.join("\n")}\n\n---\n\n**Nutriție:**\n- Proteine: ${Math.round(dailyCalories * 0.3 / 4)}g\n- Carbohidrați: ${Math.round(dailyCalories * 0.4 / 4)}g\n- Grăsimi: ${Math.round(dailyCalories * 0.3 / 9)}g`
-        : `# Daily Meal Plan (${dailyCalories} kcal)\n\n## Breakfast\n${plan.breakfast.join("\n")}\n\n## Lunch\n${plan.lunch.join("\n")}\n\n## Dinner\n${plan.dinner.join("\n")}\n\n## Snacks\n${plan.snacks.join("\n")}\n\n---\n\n**Nutrition:**\n- Protein: ${Math.round(dailyCalories * 0.3 / 4)}g\n- Carbs: ${Math.round(dailyCalories * 0.4 / 4)}g\n- Fat: ${Math.round(dailyCalories * 0.3 / 9)}g`;
-      
-      setGeneratedPlanText(planText);
+
+      if (!response.ok || !payload.plan) {
+        throw new Error(payload.error || "Failed to generate meal plan.");
+      }
+
+      setGeneratedPlan(payload.plan);
+      setPlanMessage(
+        payload.warning
+          ? { type: "info", text: payload.warning }
+          : {
+              type: "success",
+              text:
+                language === "ro"
+                  ? "Planul alimentar a fost generat din profilul tău."
+                  : "The meal plan was generated from your profile.",
+            }
+      );
     } catch (err) {
       console.error("Error generating meal plan:", err);
+      setGeneratedPlan(buildFallbackMealPlan(profile, targets, language));
+      setPlanMessage({
+        type: "info",
+        text:
+          language === "ro"
+            ? "Gemini nu a fost disponibil, așa că am afișat planul fallback din profil."
+            : "Gemini was unavailable, so the profile-based fallback plan is shown.",
+      });
     } finally {
       setIsGeneratingPlan(false);
     }
   };
 
-  const updateGoal = (goal: "lose" | "maintain" | "gain") => {
-    setGoalType(goal);
-    if (profile) {
-      const newGoalType = goal;
-      let adjustedCalories = dailyCalories;
-      
-      // Recalculate based on new goal
-      const birthDate = new Date(profile.birthDate);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      
-      let bmr: number;
-      if (profile.gender === "male") {
-        bmr = 10 * profile.weight + 6.25 * profile.height - 5 * age + 5;
-      } else {
-        bmr = 10 * profile.weight + 6.25 * profile.height - 5 * age - 161;
-      }
-      
-      const tdee = Math.round(bmr * 1.4);
-      
-      switch (newGoalType) {
-        case "lose":
-          adjustedCalories = tdee - 500;
-          break;
-        case "gain":
-          adjustedCalories = tdee + 300;
-          break;
-        default:
-          adjustedCalories = tdee;
-      }
-      
-      setDailyCalories(adjustedCalories);
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
       </div>
     );
   }
 
-  const caloriesRemaining = dailyCalories - caloriesConsumed;
-  const progressPercent = Math.min((caloriesConsumed / dailyCalories) * 100, 100);
+  if (needsProfile || !profile || !targets) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/60">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Nutrition</p>
+          <h1 className="mt-4 text-3xl font-bold text-slate-900">
+            {language === "ro" ? "Completează profilul detaliat" : "Complete the detailed profile"}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {language === "ro"
+              ? "Nutriția folosește acum profilul complet pentru ținte calorice, analiză cu Gemini și generare de plan alimentar."
+              : "Nutrition now uses your full profile for calorie targets, Gemini analysis, and meal-plan generation."}
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Link
+              href="/dev/profile/setup"
+              className="rounded-2xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-700"
+            >
+              {language === "ro" ? "Completează profilul" : "Complete profile"}
+            </Link>
+            <Link
+              href="/dev/profile"
+              className="rounded-2xl border border-slate-200 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              {language === "ro" ? "Vezi profilul" : "View profile"}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const caloriesRemaining = targets.targetCalories - caloriesConsumed;
+  const progressPercent = Math.min((caloriesConsumed / targets.targetCalories) * 100, 100);
+  const goalTags = formatTagList(profile.goals, goalOptions, language);
+  const dietSuggestions = getDietPlanSuggestions(profile, language);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      {/* Header */}
+    <div className="mx-auto max-w-6xl px-4 py-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-          <Apple className="w-8 h-8 text-emerald-500" />
+        <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
+          <Apple className="h-8 w-8 text-emerald-500" />
           {language === "ro" ? "Nutriție" : "Nutrition"}
         </h1>
-        <p className="text-slate-500 mt-1">
-          {language === "ro" 
-            ? "Planifică-ți mesele și urmărește caloriile" 
-            : "Plan your meals and track calories"}
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          {language === "ro"
+            ? "Loghezi mese din text sau poză, iar Gemini estimează cantitatea și valorile nutriționale."
+            : "Log meals from text or photo, and Gemini estimates the portion and nutritional values."}
         </p>
       </header>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 p-1 bg-slate-100 rounded-2xl w-fit">
+      <div className="mb-6 rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/40">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-900">
+              {language === "ro" ? "Profil nutrițional activ" : "Active nutrition profile"}
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              {getOptionLabel(dietaryPreferenceOptions, profile.dietaryPreference, language)} • {goalTags.join(", ")}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              {language === "ro" ? "Alergii" : "Allergies"}:{" "}
+              {profile.foodAllergies.length > 0 ? profile.foodAllergies.join(", ") : language === "ro" ? "niciuna" : "none"}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Calories</p>
+              <p className="mt-2 text-xl font-bold text-slate-900">{targets.targetCalories}</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Protein</p>
+              <p className="mt-2 text-xl font-bold text-slate-900">{targets.proteinGrams}g</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Carbs</p>
+              <p className="mt-2 text-xl font-bold text-slate-900">{targets.carbsGrams}g</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Water</p>
+              <p className="mt-2 text-xl font-bold text-slate-900">{targets.waterLiters}L</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6 flex w-fit gap-2 rounded-2xl bg-slate-100 p-1">
         <button
           onClick={() => setActiveTab("tracker")}
-          className={`px-6 py-2.5 rounded-xl font-medium transition-all ${
-            activeTab === "tracker"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
+          className={`rounded-xl px-6 py-2.5 font-medium transition ${
+            activeTab === "tracker" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
           }`}
         >
           {language === "ro" ? "Tracker" : "Tracker"}
         </button>
         <button
           onClick={() => setActiveTab("plan")}
-          className={`px-6 py-2.5 rounded-xl font-medium transition-all ${
-            activeTab === "plan"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
+          className={`rounded-xl px-6 py-2.5 font-medium transition ${
+            activeTab === "plan" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
           }`}
         >
-          {language === "ro" ? "Plan de Masă" : "Meal Plan"}
+          {language === "ro" ? "Plan alimentar" : "Meal plan"}
         </button>
       </div>
 
       {activeTab === "tracker" ? (
         <>
-          {/* Calorie Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {/* Daily Progress */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Flame className="w-5 h-5 text-orange-500" />
-                <h3 className="font-semibold text-slate-900">
-                  {language === "ro" ? "Calorii" : "Calories"}
-                </h3>
+          <div className="mb-6 grid gap-4 md:grid-cols-3">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <Flame className="h-5 w-5 text-orange-500" />
+                <h3 className="font-semibold text-slate-900">{language === "ro" ? "Calorii" : "Calories"}</h3>
               </div>
-              <div className="text-3xl font-bold text-slate-900 mb-1">
+              <div className="mb-1 text-3xl font-bold text-slate-900">
                 {caloriesConsumed}
-                <span className="text-lg font-normal text-slate-500"> / {dailyCalories}</span>
+                <span className="text-lg font-normal text-slate-500"> / {targets.targetCalories}</span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2 mb-2">
-                <div 
-                  className={`h-2 rounded-full transition-all ${
-                    caloriesRemaining < 0 ? "bg-red-500" : "bg-emerald-500"
-                  }`}
+              <div className="mb-2 h-2 w-full rounded-full bg-slate-100">
+                <div
+                  className={`h-2 rounded-full transition-all ${caloriesRemaining < 0 ? "bg-rose-500" : "bg-emerald-500"}`}
                   style={{ width: `${progressPercent}%` }}
-                ></div>
+                />
               </div>
-              <p className={`text-sm ${caloriesRemaining < 0 ? "text-red-500" : "text-slate-500"}`}>
-                {caloriesRemaining >= 0 
+              <p className={`text-sm ${caloriesRemaining < 0 ? "text-rose-500" : "text-slate-500"}`}>
+                {caloriesRemaining >= 0
                   ? `${caloriesRemaining} ${language === "ro" ? "rămase" : "remaining"}`
-                  : `${Math.abs(caloriesRemaining)} ${language === "ro" ? "exces" : "over"}`}
+                  : `${Math.abs(caloriesRemaining)} ${language === "ro" ? "peste țintă" : "over target"}`}
               </p>
             </div>
 
-            {/* Goal Selector */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Target className="w-5 h-5 text-blue-500" />
-                <h3 className="font-semibold text-slate-900">
-                  {language === "ro" ? "Obiectiv" : "Goal"}
-                </h3>
+            <div className="rounded-3xl border border-slate-200 bg-white p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <Target className="h-5 w-5 text-sky-500" />
+                <h3 className="font-semibold text-slate-900">{language === "ro" ? "Obiectiv" : "Goal"}</h3>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={() => updateGoal("lose")}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                    goalType === "lose"
-                      ? "bg-red-100 text-red-600 border border-red-200"
-                      : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  {language === "ro" ? "Slăbește" : "Lose"}
-                </button>
-                <button
-                  onClick={() => updateGoal("maintain")}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                    goalType === "maintain"
-                      ? "bg-emerald-100 text-emerald-600 border border-emerald-200"
-                      : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  {language === "ro" ? "Menține" : "Maintain"}
-                </button>
-                <button
-                  onClick={() => updateGoal("gain")}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                    goalType === "gain"
-                      ? "bg-blue-100 text-blue-600 border border-blue-200"
-                      : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  {language === "ro" ? "肌肉" : "Gain"}
-                </button>
+                {[
+                  { value: "lose", labelRo: "Slăbește", labelEn: "Lose" },
+                  { value: "maintain", labelRo: "Menține", labelEn: "Maintain" },
+                  { value: "gain", labelRo: "Crește", labelEn: "Gain" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setGoalType(option.value as GoalMode)}
+                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                      goalType === option.value
+                        ? "border border-emerald-200 bg-emerald-100 text-emerald-700"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {language === "ro" ? option.labelRo : option.labelEn}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Macros */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <UtensilsCrossed className="w-5 h-5 text-purple-500" />
-                <h3 className="font-semibold text-slate-900">
-                  {language === "ro" ? "Macronutrienți" : "Macros"}
-                </h3>
+            <div className="rounded-3xl border border-slate-200 bg-white p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <UtensilsCrossed className="h-5 w-5 text-violet-500" />
+                <h3 className="font-semibold text-slate-900">{language === "ro" ? "Consumat" : "Consumed"}</h3>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
                   <span className="text-slate-500">Protein</span>
-                  <span className="font-medium">{macros.protein}g</span>
+                  <span className="font-medium text-slate-900">
+                    {macrosConsumed.protein}g / {targets.proteinGrams}g
+                  </span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between">
                   <span className="text-slate-500">Carbs</span>
-                  <span className="font-medium">{macros.carbs}g</span>
+                  <span className="font-medium text-slate-900">
+                    {macrosConsumed.carbs}g / {targets.carbsGrams}g
+                  </span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between">
                   <span className="text-slate-500">Fat</span>
-                  <span className="font-medium">{macros.fat}g</span>
+                  <span className="font-medium text-slate-900">
+                    {macrosConsumed.fat}g / {targets.fatGrams}g
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Food Log Form */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-6">
-            <h3 className="font-semibold text-slate-900 mb-4">
-              {language === "ro" ? "Adaugă Aliment" : "Add Food"}
-            </h3>
-            <div className="flex gap-3">
-              <div className="flex-1">
+          <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-slate-900">
+                  {language === "ro" ? "Adaugă aliment" : "Add food"}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {language === "ro"
+                    ? "Poți folosi text, poză sau ambele. Gemini estimează alimentul, cantitatea și valorile."
+                    : "Use text, a photo, or both. Gemini estimates the food, portion, and nutrition values."}
+                </p>
+              </div>
+              <Sparkles className="h-5 w-5 text-emerald-500" />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="space-y-3">
+                <textarea
+                  value={foodDescription}
+                  onChange={(event) => {
+                    setFoodDescription(event.target.value);
+                    setTrackerMessage(null);
+                  }}
+                  placeholder={
+                    language === "ro"
+                      ? "Ex: pui cu orez și salată sau iaurt grecesc cu fructe"
+                      : "Example: chicken with rice and salad or Greek yogurt with fruit"
+                  }
+                  rows={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    value={quantityText}
+                    onChange={(event) => {
+                      setQuantityText(event.target.value);
+                      setTrackerMessage(null);
+                    }}
+                    placeholder={language === "ro" ? "Cantitate, ex: 250 g / 2 felii" : "Quantity, e.g. 250 g / 2 slices"}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                  />
+                  <select
+                    value={selectedMealType}
+                    onChange={(event) => setSelectedMealType(event.target.value as MealType)}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
+                  >
+                    <option value="breakfast">{language === "ro" ? "Mic dejun" : "Breakfast"}</option>
+                    <option value="lunch">{language === "ro" ? "Prânz" : "Lunch"}</option>
+                    <option value="dinner">{language === "ro" ? "Cină" : "Dinner"}</option>
+                    <option value="snack">{language === "ro" ? "Gustare" : "Snack"}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                {previewUrl ? (
+                  <div className="space-y-3">
+                    <img
+                      src={previewUrl}
+                      alt="Meal preview"
+                      className="h-48 w-full rounded-2xl object-cover"
+                    />
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-slate-500">{selectedImage?.name}</p>
+                      <button
+                        onClick={clearSelectedImage}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <X className="h-4 w-4" />
+                        {language === "ro" ? "Șterge" : "Remove"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-full min-h-[192px] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white px-4 text-center text-sm text-slate-500 transition hover:border-emerald-300 hover:text-slate-700"
+                  >
+                    <Camera className="h-8 w-8 text-emerald-500" />
+                    <span>
+                      {language === "ro"
+                        ? "Încarcă o poză cu masa pentru estimare de cantitate și aliment."
+                        : "Upload a meal photo for food and portion estimation."}
+                    </span>
+                  </button>
+                )}
                 <input
-                  type="text"
-                  value={foodInput}
-                  onChange={(e) => setFoodInput(e.target.value)}
-                  placeholder={language === "ro" ? "Ce ai mâncat?" : "What did you eat?"}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
                 />
               </div>
-              <select
-                value={selectedMealType}
-                onChange={(e) => setSelectedMealType(e.target.value as any)}
-                className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
-              >
-                <option value="breakfast">
-                  {language === "ro" ? "Mic Dejun" : "Breakfast"}
-                </option>
-                <option value="lunch">
-                  {language === "ro" ? "Prânz" : "Lunch"}
-                </option>
-                <option value="dinner">
-                  {language === "ro" ? "Cină" : "Dinner"}
-                </option>
-                <option value="snack">
-                  {language === "ro" ? "Gustare" : "Snack"}
-                </option>
-              </select>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-500">
+                {language === "ro"
+                  ? "Pentru rezultate mai bune, descrie preparatul și adaugă și cantitatea."
+                  : "For better results, describe the meal and include the quantity."}
+              </p>
               <button
                 onClick={logFood}
-                disabled={!foodInput.trim() || isLogging}
-                className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                disabled={isLogging || (!foodDescription.trim() && !selectedImage)}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:bg-slate-300"
               >
-                {isLogging ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Plus className="w-5 h-5" />
-                )}
+                {isLogging ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+                {language === "ro" ? "Analizează și loghează" : "Analyze and log"}
               </button>
+            </div>
+
+            <div className="mt-4">
+              <StatusBanner message={trackerMessage} />
             </div>
           </div>
 
-          {/* Today's Entries */}
-          <div className="bg-white rounded-2xl border border-slate-200">
-            <div className="p-5 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-900">
-                {language === "ro" ? "Astăzi" : "Today"}
-              </h3>
+          {lastAnalysis && (
+            <div className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                    {language === "ro" ? "Ultima analiză" : "Latest analysis"}
+                  </p>
+                  <h3 className="mt-2 text-xl font-bold text-slate-900">{lastAnalysis.displayName}</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {lastAnalysis.portionDescription} • {getConfidenceLabel(lastAnalysis.confidence, language)}
+                  </p>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{lastAnalysis.reasoning}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Calories</p>
+                    <p className="mt-2 text-xl font-bold text-slate-900">{lastAnalysis.calories}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Protein</p>
+                    <p className="mt-2 text-xl font-bold text-slate-900">{lastAnalysis.protein}g</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Carbs</p>
+                    <p className="mt-2 text-xl font-bold text-slate-900">{lastAnalysis.carbs}g</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Fat</p>
+                    <p className="mt-2 text-xl font-bold text-slate-900">{lastAnalysis.fat}g</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {language === "ro" ? "Componente detectate" : "Detected components"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {lastAnalysis.recognizedFoods.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm text-emerald-700"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {language === "ro" ? "Atenționări" : "Warnings"}
+                  </p>
+                  <div className="mt-3 space-y-2 text-sm text-slate-600">
+                    {lastAnalysis.warnings.length > 0 ? (
+                      lastAnalysis.warnings.map((warning) => (
+                        <p key={warning}>{warning}</p>
+                      ))
+                    ) : (
+                      <p>{language === "ro" ? "Nu există avertizări majore." : "No major warnings."}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-3xl border border-slate-200 bg-white">
+            <div className="border-b border-slate-100 p-5">
+              <h3 className="font-semibold text-slate-900">{language === "ro" ? "Astăzi" : "Today"}</h3>
             </div>
             {todayEntries.length === 0 ? (
-              <div className="p-8 text-center">
-                <Apple className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <div className="p-10 text-center">
+                <Apple className="mx-auto mb-3 h-12 w-12 text-slate-300" />
                 <p className="text-slate-500">
-                  {language === "ro" 
-                    ? "Nu ai logged niciun aliment astăzi" 
-                    : "No food logged today"}
+                  {language === "ro" ? "Nu ai logat nimic astăzi." : "No food logged today."}
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {todayEntries.map((entry) => (
-                  <div key={entry.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        entry.mealType === "breakfast" ? "bg-yellow-100" :
-                        entry.mealType === "lunch" ? "bg-orange-100" :
-                        entry.mealType === "dinner" ? "bg-purple-100" :
-                        "bg-green-100"
-                      }`}>
-                        {entry.mealType === "breakfast" ? <Coffee className="w-5 h-5 text-yellow-600" /> :
-                         entry.mealType === "lunch" ? <Sun className="w-5 h-5 text-orange-600" /> :
-                         entry.mealType === "dinner" ? <Moon className="w-5 h-5 text-purple-600" /> :
-                         <Apple className="w-5 h-5 text-green-600" />}
+                {todayEntries.map((entry) => {
+                  const Icon = getMealIcon(entry.mealType);
+
+                  return (
+                    <div key={entry.id} className="flex flex-col gap-4 p-4 hover:bg-slate-50 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
+                          <Icon className="h-5 w-5 text-emerald-700" />
+                        </div>
+                        {entry.imageUrl ? (
+                          <img
+                            src={entry.imageUrl}
+                            alt={entry.name}
+                            className="h-16 w-16 rounded-2xl object-cover"
+                          />
+                        ) : null}
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-slate-900">{entry.name}</p>
+                            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                              {getAnalysisSourceLabel(entry.analysisSource, language)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {getMealTypeLabel(entry.mealType, language)}
+                            {entry.quantityText ? ` • ${entry.quantityText}` : ""}
+                            {entry.estimatedWeightGrams ? ` • ~${entry.estimatedWeightGrams} g` : ""}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {entry.protein}g P • {entry.carbs}g C • {entry.fat}g F
+                            {entry.fiber ? ` • ${entry.fiber}g fibre` : ""}
+                          </p>
+                          {entry.warnings && entry.warnings.length > 0 ? (
+                            <p className="mt-2 text-sm text-amber-600">{entry.warnings[0]}</p>
+                          ) : null}
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-slate-900">{entry.name}</p>
-                        <p className="text-sm text-slate-500">
-                          {entry.protein}g P • {entry.carbs}g C • {entry.fat}g F
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-900">{entry.calories} kcal</p>
+                        <p className="text-sm capitalize text-slate-500">
+                          {getConfidenceLabel(entry.analysisConfidence, language)}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-900">{entry.calories} kcal</p>
-                      <p className="text-sm text-slate-500 capitalize">
-                        {entry.mealType}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         </>
       ) : (
         <>
-          {/* Meal Plan Generator */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                  <ChefHat className="w-5 h-5 text-emerald-500" />
-                  {language === "ro" ? "Plan Alimentar Personalizat" : "Personalized Meal Plan"}
+                <h3 className="flex items-center gap-2 font-semibold text-slate-900">
+                  <ChefHat className="h-5 w-5 text-emerald-500" />
+                  {language === "ro" ? "Plan alimentar personalizat" : "Personalized meal plan"}
                 </h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  {language === "ro" 
-                    ? `Bazat pe obiectivul tău: ${dailyCalories} kcal/zi`
-                    : `Based on your goal: ${dailyCalories} kcal/day`}
+                <p className="mt-2 text-sm text-slate-500">
+                  {language === "ro"
+                    ? `Gemini folosește profilul tău, țintele actuale și ${profile.mealsPerDay} mese pe zi pentru a genera planul.`
+                    : `Gemini uses your profile, current targets, and ${profile.mealsPerDay} meals per day to generate the plan.`}
                 </p>
               </div>
               <button
                 onClick={generateMealPlan}
                 disabled={isGeneratingPlan}
-                className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 disabled:opacity-50 flex items-center gap-2"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:bg-slate-300"
               >
-                {isGeneratingPlan ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <ChefHat className="w-5 h-5" />
-                )}
-                {language === "ro" ? "Generează Plan" : "Generate Plan"}
+                {isGeneratingPlan ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+                {language === "ro" ? "Generează cu Gemini" : "Generate with Gemini"}
               </button>
             </div>
 
-            {generatedPlanText && (
-              <div className="bg-slate-50 rounded-xl p-4 whitespace-pre-wrap text-sm text-slate-700">
-                {generatedPlanText}
+            <div className="mt-4">
+              <StatusBanner message={planMessage} />
+            </div>
+          </div>
+
+          {generatedPlan ? (
+            <>
+              <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-6">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                      {language === "ro" ? "Plan generat" : "Generated plan"}
+                    </p>
+                    <h2 className="mt-2 text-2xl font-bold text-slate-900">{generatedPlan.title}</h2>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{generatedPlan.summary}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Calories</p>
+                      <p className="mt-2 text-xl font-bold text-slate-900">{generatedPlan.dailyTargets.calories}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Protein</p>
+                      <p className="mt-2 text-xl font-bold text-slate-900">{generatedPlan.dailyTargets.protein}g</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Carbs</p>
+                      <p className="mt-2 text-xl font-bold text-slate-900">{generatedPlan.dailyTargets.carbs}g</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Water</p>
+                      <p className="mt-2 text-xl font-bold text-slate-900">{generatedPlan.dailyTargets.waterLiters}L</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Quick Meal Suggestions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <Coffee className="w-5 h-5 text-yellow-500" />
-                {language === "ro" ? "Mic Dejun (300-400 kcal)" : "Breakfast (300-400 kcal)"}
-              </h4>
-              <ul className="space-y-2 text-sm text-slate-600">
-                <li>• {language === "ro" ? "Ovăz cu lapte și fructe" : "Oatmeal with milk and fruits"}</li>
-                <li>• {language === "ro" ? "Ouă + pâine integrală" : "Eggs + whole grain bread"}</li>
-                <li>• {language === "ro" ? "Iaurt greek cu granola" : "Greek yogurt with granola"}</li>
-              </ul>
-            </div>
+              <div className="mb-6 grid gap-4 lg:grid-cols-2">
+                {generatedPlan.meals.map((meal, index) => {
+                  const Icon = getMealIcon(meal.slot);
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <Sun className="w-5 h-5 text-orange-500" />
-                {language === "ro" ? "Prânz (600-800 kcal)" : "Lunch (600-800 kcal)"}
-              </h4>
-              <ul className="space-y-2 text-sm text-slate-600">
-                <li>• {language === "ro" ? "Pui + orez + legume" : "Chicken + rice + vegetables"}</li>
-                <li>• {language === "ro" ? "Salată cu carne" : "Salad with meat"}</li>
-                <li>• {language === "ro" ? "Pește + cartofi" : "Fish + potatoes"}</li>
-              </ul>
-            </div>
+                  return (
+                    <div key={`${meal.slot}-${index}`} className="rounded-3xl border border-slate-200 bg-white p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100">
+                            <Icon className="h-5 w-5 text-emerald-700" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-slate-500">{getMealTypeLabel(meal.slot, language)} • {meal.time}</p>
+                            <h3 className="font-semibold text-slate-900">{meal.title}</h3>
+                          </div>
+                        </div>
+                        <p className="text-sm font-semibold text-slate-700">{meal.calories} kcal</p>
+                      </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <Moon className="w-5 h-5 text-purple-500" />
-                {language === "ro" ? "Cină (400-600 kcal)" : "Dinner (400-600 kcal)"}
-              </h4>
-              <ul className="space-y-2 text-sm text-slate-600">
-                <li>• {language === "ro" ? "Supă de legume" : "Vegetable soup"}</li>
-                <li>• {language === "ro" ? "Salată + brânză" : "Salad + cheese"}</li>
-                <li>• {language === "ro" ? "Legume la grătar" : "Grilled vegetables"}</li>
-              </ul>
-            </div>
+                      <p className="mt-3 text-sm text-slate-500">{meal.quantity}</p>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <Apple className="w-5 h-5 text-green-500" />
-                {language === "ro" ? "Gustări (100-200 kcal)" : "Snacks (100-200 kcal)"}
-              </h4>
-              <ul className="space-y-2 text-sm text-slate-600">
-                <li>• {language === "ro" ? "Fructe" : "Fruits"}</li>
-                <li>• {language === "ro" ? "Iaurt" : "Yogurt"}</li>
-                <li>• {language === "ro" ? "Nuci/alune" : "Nuts"}</li>
-              </ul>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {meal.foods.map((food) => (
+                          <span
+                            key={food}
+                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700"
+                          >
+                            {food}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-3 gap-3 rounded-2xl bg-slate-50 p-4 text-sm">
+                        <div>
+                          <p className="text-slate-400">Protein</p>
+                          <p className="mt-1 font-semibold text-slate-900">{meal.protein}g</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400">Carbs</p>
+                          <p className="mt-1 font-semibold text-slate-900">{meal.carbs}g</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400">Fat</p>
+                          <p className="mt-1 font-semibold text-slate-900">{meal.fat}g</p>
+                        </div>
+                      </div>
+
+                      <p className="mt-4 text-sm leading-6 text-slate-600">{meal.reason}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[1fr_1fr_0.9fr]">
+                <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                  <h4 className="mb-3 font-semibold text-slate-900">
+                    {language === "ro" ? "Recomandări" : "Coaching tips"}
+                  </h4>
+                  <div className="space-y-2 text-sm text-slate-600">
+                    {generatedPlan.coachingTips.map((tip) => (
+                      <p key={tip}>• {tip}</p>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                  <h4 className="mb-3 font-semibold text-slate-900">
+                    {language === "ro" ? "Lista de cumpărături" : "Shopping list"}
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {generatedPlan.shoppingList.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                  <h4 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
+                    <Droplets className="h-4 w-4 text-sky-500" />
+                    {language === "ro" ? "Hidratare" : "Hydration"}
+                  </h4>
+                  <div className="space-y-2 text-sm text-slate-600">
+                    {generatedPlan.hydrationPlan.map((item) => (
+                      <p key={item}>{item}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                <h4 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
+                  <Coffee className="h-5 w-5 text-yellow-500" />
+                  {language === "ro" ? "Mic dejun" : "Breakfast"}
+                </h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {dietSuggestions.breakfast.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                <h4 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
+                  <Sun className="h-5 w-5 text-orange-500" />
+                  {language === "ro" ? "Prânz" : "Lunch"}
+                </h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {dietSuggestions.lunch.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                <h4 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
+                  <Moon className="h-5 w-5 text-violet-500" />
+                  {language === "ro" ? "Cină" : "Dinner"}
+                </h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {dietSuggestions.dinner.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                <h4 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
+                  <Apple className="h-5 w-5 text-emerald-500" />
+                  {language === "ro" ? "Gustări" : "Snacks"}
+                </h4>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {dietSuggestions.snacks.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>
