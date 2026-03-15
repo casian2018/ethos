@@ -294,7 +294,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
       }
 
       // Redirect to session
-      router.push(`/train/session/${sessionRef.id}`);
+      router.push(`/dev/train/session/${sessionRef.id}`);
     } catch (err) {
       console.error("Error starting workout:", err);
     } finally {
@@ -322,7 +322,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
     <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Header */}
       <header className="mb-8">
-        <Link href="/train" className="text-zinc-500 text-slate-500 mb-2 inline-flex items-center gap-1">
+        <Link href="/dev/train" className="text-zinc-500 text-slate-500 mb-2 inline-flex items-center gap-1">
           ← Back to Train
         </Link>
         <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 text-slate-900">

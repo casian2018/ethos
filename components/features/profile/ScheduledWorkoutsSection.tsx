@@ -66,7 +66,7 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
           
           // Check if user is host or buddy
           const isHost = data.hostId === userId;
-          const isBuddy = data.buddyId === userId;
+          const isBuddy = data.participants?.includes(userId) || false;
           
           if (!isHost && !isBuddy) continue;
           
@@ -74,13 +74,14 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
           let partnerName: string | undefined;
           let partnerId: string | undefined;
           
-          if (isHost && data.buddyId) {
-            // User is host, get buddy info
+          if (isHost && data.participants && data.participants.length > 0) {
+            // User is host, get first participant info
+            const buddyId = data.participants[0];
             try {
-              const buddyDoc = await getDoc(doc(db, "users", data.buddyId));
+              const buddyDoc = await getDoc(doc(db, "users", buddyId));
               if (buddyDoc.exists()) {
                 partnerName = buddyDoc.data().displayName || "Partener";
-                partnerId = data.buddyId;
+                partnerId = buddyId;
               }
             } catch (err) {
               console.error("Error fetching buddy:", err);
@@ -99,10 +100,11 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
             city: data.city,
             dateTime: data.dateTime?.toDate ? data.dateTime.toDate() : new Date(),
             duration: data.duration,
+            maxParticipants: data.maxParticipants || 1,
+            participants: data.participants || [],
             genderPreference: data.genderPreference,
             location: data.location,
             status: data.status,
-            buddyId: data.buddyId,
             description: data.description,
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
             updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(),

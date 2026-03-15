@@ -579,7 +579,7 @@ export function calculateAverageAge(birthDates: string[]): number {
 
 // ==================== Availability Slots (Find a Buddy) ====================
 
-export type SlotStatus = "open" | "matched" | "cancelled";
+export type SlotStatus = "open" | "matched" | "closed" | "cancelled";
 
 export interface AvailabilitySlot {
   id?: string;
@@ -589,17 +589,19 @@ export interface AvailabilitySlot {
   city: string;
   dateTime: Date;          // Start timestamp
   duration: number;         // Minutes
+  maxParticipants: number;   // Max buddies that can join (default 1)
+  participants: string[];   // Array of user IDs who joined
   genderPreference: GenderPreference;
   location: {
     name: string;
     address?: string;
     isPaid: boolean;
-    price?: number;         // RON per person
-    priceNote?: string;
+    price?: number | null;         // RON per person
+    priceNote?: string | null;
   };
   status: SlotStatus;
-  buddyId: string | null;  // Filled when someone joins
   description?: string;
+  matchedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,11 +1,5 @@
 /**
- * FindABuddyFeed - Enhanced Feed page for browsing available training slots
- * 
- * Features:
- * - Top filters: City, Sport, Time
- * - Join button with Firestore update and Success Modal
- * - Empty State with CTA
- * - Mobile responsive design
+ * FindABuddyFeed - Modern Redesigned with Matchmaking Cards
  */
 
 "use client";
@@ -15,7 +9,6 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { 
   collection, 
   query, 
-  where, 
   getDocs, 
   doc, 
   updateDoc, 
@@ -24,71 +17,72 @@ import {
 } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
-import { 
-  AvailabilitySlot, 
-  sportTypeLabels, 
-  genderPreferenceLabels,
-  preferredSportsList,
-} from "@/lib/types";
+import { AvailabilitySlot } from "@/lib/types";
+import { MatchmakingCard } from "@/components/features/find-a-buddy/MatchmakingCard";
+import { BuddyCard } from "@/components/features/find-a-buddy/BuddyCard";
+import { EvolutionChart } from "@/components/features/find-a-buddy/EvolutionChart";
+import SlotChatModal from "@/components/features/find-a-buddy/SlotChatModal";
+import { Search, Filter, Sparkles } from "lucide-react";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
 
-const cities = [
-  { id: "all", label: "Toate", labelEn: "All" },
-  { id: "Bucharest", label: "București", labelEn: "Bucharest" },
-  { id: "Cluj-Napoca", label: "Cluj-Napoca", labelEn: "Cluj-Napoca" },
-  { id: "Timișoara", label: "Timișoara", labelEn: "Timișoara" },
-  { id: "Iași", label: "Iași", labelEn: "Iași" },
-  { id: "Constanța", label: "Constanța", labelEn: "Constanța" },
-  { id: "Craiova", label: "Craiova", labelEn: "Craiova" },
-  { id: "Brașov", label: "Brașov", labelEn: "Brașov" },
-];
-
-const timeSlots = [
-  { id: "all", label: "Oricând", labelEn: "Any time" },
-  { id: "morning", label: "Dimineață (6-12)", labelEn: "Morning (6-12)" },
-  { id: "afternoon", label: "Prânz (12-18)", labelEn: "Afternoon (12-18)" },
-  { id: "evening", label: "Seară (18-22)", labelEn: "Evening (18-22)" },
-];
-
-// Sport emoji mapping
-const sportEmojis: Record<string, string> = {
-  gym: "🏋️",
-  running: "🏃",
-  swimming: "🏊",
-  football: "⚽",
-  tennis: "🎾",
-  basketball: "🏀",
-  cycling: "🚴",
-  yoga: "🧘",
-  hiking: "🥾",
-  boxing: "🥊",
-};
-
-// Extended slot type for display
 interface ExtendedSlot extends AvailabilitySlot {
   id: string;
 }
 
+// Demo buddies for display
+const demoBuddies = [
+  {
+    name: "Alex Rivera",
+    avatar: "https://images.unsplash.com/photo-1765958516447-79fa73ef4fa9?w=200&h=200&fit=crop",
+    sports: ["Basketball", "Tennis"],
+    level: "Advanced Athlete",
+    rating: 4.9,
+    matchScore: 95,
+    available: true,
+  },
+  {
+    name: "Jessica Kim",
+    avatar: "https://images.unsplash.com/photo-1754257319723-6a775bedb0fc?w=200&h=200&fit=crop",
+    sports: ["Pilates", "Yoga"],
+    level: "Certified Instructor",
+    rating: 5.0,
+    matchScore: 88,
+    available: true,
+  },
+  {
+    name: "Marcus Thompson",
+    avatar: "https://images.unsplash.com/photo-1631326658197-faa42ff125b1?w=200&h=200&fit=crop",
+    sports: ["Running", "Cycling"],
+    level: "Marathon Runner",
+    rating: 4.8,
+    matchScore: 92,
+    available: false,
+  },
+  {
+    name: "Sofia Patel",
+    avatar: "https://images.unsplash.com/photo-1721417264655-2ccbf19152c6?w=200&h=200&fit=crop",
+    sports: ["Volleyball", "Swimming"],
+    level: "Intermediate",
+    rating: 4.7,
+    matchScore: 85,
+    available: true,
+  },
+];
+
 export default function FindABuddyFeedPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [slots, setSlots] = useState<ExtendedSlot[]>([]);
+  const [mySlots, setMySlots] = useState<ExtendedSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState<string | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeChatSlot, setActiveChatSlot] = useState<ExtendedSlot | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [joinedSlot, setJoinedSlot] = useState<ExtendedSlot | null>(null);
   
-  // Filters
-  const today = new Date().toISOString().split('T')[0];
-  const [cityFilter, setCityFilter] = useState("all");
-  const [sportFilter, setSportFilter] = useState("all");
-  const [timeFilter, setTimeFilter] = useState("all");
-
   // Fetch current user
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -103,29 +97,37 @@ export default function FindABuddyFeedPage() {
       setLoading(true);
       try {
         const slotsRef = collection(db, "availability_slots");
-        const q = query(
-          slotsRef,
-          where("status", "==", "open"),
-          orderBy("createdAt", "desc")
-        );
+        const q = query(slotsRef, orderBy("createdAt", "desc"));
         
         const snapshot = await getDocs(q);
         const slotsData: ExtendedSlot[] = [];
+        const mySlotsData: ExtendedSlot[] = [];
         
         for (const docSnap of snapshot.docs) {
           const data = docSnap.data();
-          // Don't show user's own slots
-          if (data.hostId !== user?.uid) {
-            slotsData.push({
-              id: docSnap.id,
-              ...data,
-              createdAt: data.createdAt?.toDate() || new Date(),
-              dateTime: data.dateTime?.toDate() || new Date(),
-            } as ExtendedSlot);
+          const slot: ExtendedSlot = {
+            id: docSnap.id,
+            ...data,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            dateTime: data.dateTime?.toDate() || new Date(),
+          } as ExtendedSlot;
+          
+          const participants = data.participants || [];
+          const isHost = data.hostId === user?.uid;
+          const isParticipant = participants.includes(user?.uid);
+          const maxParticipants = data.maxParticipants || 1;
+          const isFull = participants.length >= maxParticipants;
+          
+          // Add to my slots if I'm host or participant
+          if (isHost || isParticipant) {
+            mySlotsData.push(slot);
+          } else if (!isFull && data.status !== "closed") {
+            slotsData.push(slot);
           }
         }
         
         setSlots(slotsData);
+        setMySlots(mySlotsData);
       } catch (err) {
         console.error("Error fetching slots:", err);
       } finally {
@@ -138,304 +140,345 @@ export default function FindABuddyFeedPage() {
     }
   }, [user]);
 
-  // Filter slots
-  const filteredSlots = slots.filter(slot => {
-    // City filter
-    if (cityFilter !== "all" && slot.city !== cityFilter) return false;
-    
-    // Sport filter
-    if (sportFilter !== "all" && slot.sportType !== sportFilter) return false;
-    
-    // Time filter
-    if (timeFilter !== "all" && slot.dateTime) {
-      const slotDate = slot.dateTime instanceof Date ? slot.dateTime : new Date(slot.dateTime);
-      const slotHour = slotDate.getHours();
-      if (timeFilter === "morning" && (slotHour < 6 || slotHour >= 12)) return false;
-      if (timeFilter === "afternoon" && (slotHour < 12 || slotHour >= 18)) return false;
-      if (timeFilter === "evening" && (slotHour < 18 || slotHour >= 22)) return false;
-    }
-    
-    return true;
-  });
-
   // Join slot
   async function handleJoin(slot: ExtendedSlot) {
     if (!user || !slot.id) return;
     
     setJoining(slot.id);
-    setError("");
     
     try {
-      // Update slot with buddy
       const slotRef = doc(db, "availability_slots", slot.id);
+      const maxParticipants = slot.maxParticipants || 1;
+      const currentParticipants = slot.participants || [];
+      
       await updateDoc(slotRef, {
-        status: "matched",
-        buddyId: user.uid,
+        participants: [...currentParticipants, user.uid],
+        status: currentParticipants.length + 1 >= maxParticipants ? "closed" : "open",
         matchedAt: serverTimestamp(),
       });
       
-      // Show success modal
       setJoinedSlot(slot);
       setShowSuccessModal(true);
       
     } catch (err) {
       console.error("Error joining slot:", err);
-      setError(language === "ro" ? "Eroare la înregistrare" : "Error joining");
     } finally {
       setJoining(null);
     }
   }
 
-  function closeSuccessModal() {
-    setShowSuccessModal(false);
-    setJoinedSlot(null);
-    // Refresh slots
-    window.location.reload();
-  }
-
-  // Format time from Date
-  function formatTime(date: Date) {
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${hours}:${minutes}`;
-  }
-
   // Get sport emoji
   function getSportEmoji(sport: string) {
-    return sportEmojis[sport] || "🏃";
+    const emojis: Record<string, string> = {
+      gym: "🏋️",
+      running: "🏃",
+      swimming: "🏊",
+      football: "⚽",
+      tennis: "🎾",
+      basketball: "🏀",
+      cycling: "🚴",
+      yoga: "🧘",
+      hiking: "🥾",
+      boxing: "🥊",
+      volleyball: "🏐",
+    };
+    return emojis[sport?.toLowerCase()] || "🏃";
   }
 
-  // Get city label
-  function getCityLabel(cityId: string) {
-    const city = cities.find(c => c.id === cityId);
-    return language === "ro" ? (city?.label || cityId) : (city?.labelEn || cityId);
+  // Format date
+  function formatDate(date: Date) {
+    const d = date instanceof Date ? date : new Date(date);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (d.toDateString() === today.toDateString()) {
+      return language === "ro" ? "Astăzi" : "Today";
+    } else if (d.toDateString() === tomorrow.toDateString()) {
+      return language === "ro" ? "Mâine" : "Tomorrow";
+    }
+    return d.toLocaleDateString(language === "ro" ? "ro-RO" : "en-US", { 
+      month: "short", 
+      day: "numeric" 
+    });
   }
+
+  // Format time
+  function formatTime(date: Date) {
+    const d = date instanceof Date ? date : new Date(date);
+    return d.toLocaleTimeString(language === "ro" ? "ro-RO" : "en-US", { 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
+  }
+
+  // Filter slots by search
+  const filteredSlots = slots.filter(slot => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      slot.sportType?.toLowerCase().includes(query) ||
+      slot.city?.toLowerCase().includes(query) ||
+      slot.location?.name?.toLowerCase().includes(query)
+    );
+  });
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-[#F9F7F2]">
+      <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              {language === "ro" ? "Disponibilități" : "Availability"}
-            </h1>
-            <p className="text-slate-500 text-sm">
-              {filteredSlots.length} {language === "ro" ? "sloturi disponibile" : "slots available"}
-            </p>
-          </div>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {language === "ro" ? "Adaugă" : "Add"}
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-2xl p-4 mb-6 border border-slate-200">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* City Filter */}
+        <header className="mb-12">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                🏙️ {language === "ro" ? "Oraș" : "City"}
-              </label>
-              <select
-                value={cityFilter}
-                onChange={(e) => setCityFilter(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 outline-none"
-              >
-                {cities.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {language === "ro" ? city.label : city.labelEn}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-3 mb-2">
+                <Sparkles className="w-6 h-6 text-[#D4896F]" />
+                <h1 className="text-4xl tracking-tight text-slate-900">
+                  {language === "ro" ? "Găsește Partenerul" : "Find Your Buddy"}
+                </h1>
+              </div>
+              <p className="text-slate-500 text-lg">
+                {language === "ro" 
+                  ? "Conectează-te cu sportivi pasionați și fă din mișcare o experiență comună"
+                  : "Connect with passionate athletes and make movement a shared experience"
+                }
+              </p>
             </div>
 
-            {/* Sport Filter */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                🏃 {language === "ro" ? "Sport" : "Sport"}
-              </label>
-              <select
-                value={sportFilter}
-                onChange={(e) => setSportFilter(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 outline-none"
-              >
-                <option value="all">{language === "ro" ? "Toate" : "All"}</option>
-                {preferredSportsList.map((sport) => (
-                  <option key={sport.value} value={sport.value}>
-                    {getSportEmoji(sport.value)} {sport.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Time Filter */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                ⏰ {language === "ro" ? "Oră" : "Time"}
-              </label>
-              <select
-                value={timeFilter}
-                onChange={(e) => setTimeFilter(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 outline-none"
-              >
-                {timeSlots.map((slot) => (
-                  <option key={slot.id} value={slot.id}>
-                    {language === "ro" ? slot.label : slot.labelEn}
-                  </option>
-                ))}
-              </select>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder={language === "ro" ? "Caută sport, locații..." : "Search sports, locations..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-80 pl-12 pr-4 py-4 bg-white rounded-2xl text-slate-900 placeholder:text-slate-400 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#D4896F]/20 transition-all shadow-sm"
+                />
+              </div>
+              <button className="h-14 px-6 rounded-2xl border border-slate-200 hover:bg-white gap-2 flex items-center text-slate-600 transition-colors">
+                <Filter className="w-5 h-5" />
+                <span>{language === "ro" ? "Filtre" : "Filters"}</span>
+              </button>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200">
-            <p className="text-red-600">{error}</p>
-          </div>
+        {/* My Slots Section */}
+        {mySlots.length > 0 && (
+          <section className="mb-16">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl text-slate-900 mb-1">
+                  {language === "ro" ? "Sloturile Mele" : "My Sessions"}
+                </h2>
+                <p className="text-slate-500">
+                  {language === "ro" ? "Sesiunile tale active" : "Your active sessions"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {mySlots.map((slot) => (
+                <MatchmakingCard
+                  key={slot.id}
+                  title={`${getSportEmoji(slot.sportType)} ${slot.sportType} ${language === "ro" ? "cu tine" : "with you"}`}
+                  host={{
+                    name: "Tu",
+                    avatar: user?.photoURL || "https://images.unsplash.com/photo-1721417264655-2ccbf19152c6?w=200&h=200&fit=crop",
+                    rating: 5.0,
+                  }}
+                  sport={slot.sportType || "Gym"}
+                  time={formatTime(slot.dateTime)}
+                  date={formatDate(slot.dateTime)}
+                  location={slot.location?.name || "Location"}
+                  currentPlayers={slot.participants?.length || 1}
+                  maxPlayers={slot.maxParticipants || 1}
+                  onJoin={() => setActiveChatSlot(slot)}
+                  slotId={slot.id}
+                />
+              ))}
+            </div>
+          </section>
         )}
 
-        {/* Slots List or Empty State */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filteredSlots.length === 0 ? (
-          /* Empty State */
-          <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
-            <div className="text-6xl mb-4">🤝</div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">
-              {language === "ro" ? "Niciun partener disponibil" : "No partners available"}
-            </h3>
-            <p className="text-slate-500 mb-6 max-w-sm mx-auto">
-              {language === "ro" 
-                ? "Niciun partener disponibil? Fii tu cel care dă startul!"
-                : "No partners available? Be the one to start!"}
-            </p>
+        {/* Available Sessions */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl text-slate-900 mb-1">
+                {language === "ro" ? "Sesiuni Disponibile" : "Happening Soon"}
+              </h2>
+              <p className="text-slate-500">
+                {language === "ro" 
+                  ? "Alătură-te sesiunilor viitoare în zona ta"
+                  : "Join upcoming sessions in your area"
+                }
+              </p>
+            </div>
             <button
               onClick={() => window.location.href = "/dev/find_a_buddy"}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-medium transition-colors inline-flex items-center gap-2"
+              className="text-[#D4896F] hover:bg-[#D4896F]/10 px-4 py-2 rounded-xl font-medium transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {language === "ro" ? "Adaugă Disponibilitate" : "Add Availability"}
+              {language === "ro" ? "Creează o sesiune →" : "Create session →"}
             </button>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredSlots.map((slot) => (
-              <div 
-                key={slot.id} 
-                className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-emerald-300 transition-all hover:shadow-md"
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-4 border-[#D4896F] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : filteredSlots.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-100">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Nicio sesiune disponibilă" : "No sessions available"}
+              </h3>
+              <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+                {language === "ro" 
+                  ? "Nu există sesiuni disponibile. Fii primul care creează una!"
+                  : "No sessions available at the moment. Be the first to create one!"
+                }
+              </p>
+              <button
+                onClick={() => window.location.href = "/dev/find_a_buddy"}
+                className="bg-[#D4896F] hover:bg-[#c4785f] text-white px-6 py-3 rounded-xl font-medium transition-colors inline-flex items-center gap-2"
               >
-                <div className="flex items-start justify-between">
-                  {/* Slot Info */}
-                  <div className="flex-1">
-                    {/* Sport & City */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-2xl">{getSportEmoji(slot.sportType)}</span>
-                      <div>
-                        <h3 className="font-bold text-slate-900">
-                          {slot.sportType}
-                        </h3>
-                        <p className="text-sm text-slate-500">
-                          🏙️ {getCityLabel(slot.city)}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Date & Time */}
-                    <div className="flex items-center gap-4 text-sm mb-3">
-                      <div className="flex items-center gap-1 text-slate-600">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {slot.dateTime instanceof Date ? slot.dateTime.toLocaleDateString() : new Date(slot.dateTime).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center gap-1 text-slate-600">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {formatTime(slot.dateTime)}
-                      </div>
-                      <div className="flex items-center gap-1 text-slate-600">
-                        ⏱️ {slot.duration} min
-                      </div>
-                    </div>
-                    
-                    {/* Location & Price */}
-                    <div className="flex items-center gap-2 text-sm">
-                      {slot.location?.isPaid ? (
-                        <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg font-medium">
-                          💰 {slot.location?.price} Lei
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg font-medium">
-                          🎉 {language === "ro" ? "Gratis" : "Free"}
-                        </span>
-                      )}
-                      {slot.location?.name && (
-                        <span className="text-slate-500">
-                          📍 {slot.location?.name}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Join Button */}
-                  <button
-                    onClick={() => handleJoin(slot)}
-                    disabled={joining === slot.id}
-                    className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white px-4 py-2 rounded-xl font-medium transition-colors"
-                  >
-                    {joining === slot.id ? (
-                      <span className="flex items-center gap-2">
-                        <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                      </span>
-                    ) : (
-                      language === "ro" ? "Alătură-te" : "Join"
-                    )}
-                  </button>
-                </div>
-              </div>
+                {language === "ro" ? "Creează Sesiune" : "Create Session"}
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {filteredSlots.map((slot) => (
+                <MatchmakingCard
+                  key={slot.id}
+                  title={`${getSportEmoji(slot.sportType)} ${slot.sportType} ${language === "ro" ? "în" : "in"} ${slot.city}`}
+                  host={{
+                    name: slot.hostName || "Host",
+                    avatar: "https://images.unsplash.com/photo-1721417264655-2ccbf19152c6?w=200&h=200&fit=crop",
+                    rating: 4.8,
+                  }}
+                  sport={slot.sportType || "Gym"}
+                  time={formatTime(slot.dateTime)}
+                  date={formatDate(slot.dateTime)}
+                  location={slot.location?.name || "Location"}
+                  currentPlayers={slot.participants?.length || 1}
+                  maxPlayers={slot.maxParticipants || 1}
+                  featured={slot.participants?.length >= (slot.maxParticipants || 1) - 1}
+                  onJoin={() => handleJoin(slot)}
+                  slotId={slot.id}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Recommended Buddies */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl text-slate-900 mb-1">
+                {language === "ro" ? "Potrivi Perfecte" : "Perfect Matches"}
+              </h2>
+              <p className="text-slate-500">
+                {language === "ro" 
+                  ? "Sportivi cu interese și obiective similare"
+                  : "Athletes with similar interests and goals"
+                }
+              </p>
+            </div>
+            <button className="text-[#D4896F] hover:bg-[#D4896F]/10 px-4 py-2 rounded-xl font-medium transition-colors">
+              {language === "ro" ? "Vezi mai mulți →" : "See more buddies →"}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {demoBuddies.map((buddy, index) => (
+              <BuddyCard key={index} {...buddy} />
             ))}
           </div>
-        )}
+        </section>
+
+        {/* Evolution Stats */}
+        <section>
+          <div className="mb-8">
+            <h2 className="text-2xl text-slate-900 mb-1">
+              {language === "ro" ? "Evoluția Ta" : "Your Evolution"}
+            </h2>
+            <p className="text-slate-500">
+              {language === "ro" 
+                ? "Urmărește progresul și sărbătorește realizările"
+                : "Track your progress and celebrate milestones"
+              }
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <EvolutionChart
+              title={language === "ro" ? "Sesiuni Active" : "Active Sessions"}
+              value="24"
+              change="+12%"
+              data={[15, 18, 22, 19, 24, 28, 24]}
+              color="emerald"
+            />
+            <EvolutionChart
+              title={language === "ro" ? "Ore Antrenament" : "Hours Trained"}
+              value="47h"
+              change="+8%"
+              data={[32, 38, 35, 42, 45, 48, 47]}
+              color="blue"
+            />
+            <EvolutionChart
+              title={language === "ro" ? "Conexiuni Noi" : "New Connections"}
+              value="18"
+              change="+25%"
+              data={[8, 10, 12, 14, 15, 16, 18]}
+              color="amber"
+            />
+          </div>
+        </section>
 
         {/* Success Modal */}
         {showSuccessModal && joinedSlot && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-6 max-w-md w-full text-center animate-in fade-in zoom-in">
+            <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center animate-in fade-in zoom-in">
               <div className="text-6xl mb-4">🎉</div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">
                 {language === "ro" ? "Te-ai alăturat!" : "You joined!"}
               </h3>
-              <p className="text-slate-600 mb-4">
+              <p className="text-slate-600 mb-6">
                 {language === "ro" 
-                  ? `Te-ai alăturat slotului de ${joinedSlot.sportType} în ${getCityLabel(joinedSlot.city)}. Contactează-l pe gazdă pentru detalii!`
-                  : `You joined the ${joinedSlot.sportType} slot in ${getCityLabel(joinedSlot.city)}. Contact the host for details!`}
+                  ? `Te-ai alăturat sesiunii de ${joinedSlot.sportType}. Discută cu ceilalți participanți!`
+                  : `You joined the ${joinedSlot.sportType} session. Discuss with other participants!`
+                }
               </p>
               <div className="flex gap-3">
                 <button
-                  onClick={closeSuccessModal}
-                  className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-xl font-medium transition-colors"
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    setActiveChatSlot(joinedSlot);
+                  }}
+                  className="flex-1 bg-[#D4896F] hover:bg-[#c4785f] text-white px-4 py-3 rounded-xl font-medium transition-colors"
+                >
+                  💬 {language === "ro" ? "Deschide Chat" : "Open Chat"}
+                </button>
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-3 rounded-xl font-medium transition-colors"
                 >
                   {language === "ro" ? "Închide" : "Close"}
                 </button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Chat Modal */}
+        {activeChatSlot && (
+          <SlotChatModal 
+            slot={activeChatSlot} 
+            userId={user?.uid || null}
+            onClose={() => setActiveChatSlot(null)} 
+          />
         )}
       </div>
     </div>

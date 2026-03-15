@@ -21,6 +21,7 @@ import {
   serverTimestamp 
 } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { 
   SportType, 
   GenderPreference, 
@@ -61,11 +62,21 @@ const durationOptions = [
   { value: 180, label: "3 ore" },
 ];
 
+const participantOptions = [
+  { value: 1, label: "1 vs 1" },
+  { value: 2, label: "1 vs 2" },
+  { value: 3, label: "1 vs 3" },
+  { value: 4, label: "1 vs 4" },
+  { value: 5, label: "Grup mic (5)" },
+  { value: 10, label: "Grup (10)" },
+];
+
 export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabilityFormProps) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { language } = useLanguage();
   
   // Form state
   const [sportType, setSportType] = useState<SportType | "">("");
@@ -74,6 +85,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState(60);
   const [genderPreference, setGenderPreference] = useState<GenderPreference>("anyone");
+  const [maxParticipants, setMaxParticipants] = useState(1); // Default 1 vs 1
   const [locationName, setLocationName] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
   const [isPaid, setIsPaid] = useState(false);
@@ -183,16 +195,17 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
         city,
         dateTime: dateTime,
         duration,
+        maxParticipants, // How many buddies can join
+        participants: [user.uid], // Host is already participant
         genderPreference,
         location: {
           name: locationName,
           address: locationAddress || "",
           isPaid,
-          price: isPaid && price ? parseFloat(price) : undefined,
-          priceNote: isPaid ? (priceNote || `${price} RON`) : undefined,
+          price: isPaid && price ? parseFloat(price) : null,
+          priceNote: isPaid ? (priceNote || `${price} RON`) : null,
         },
         status: "open",
-        buddyId: null,
         description: description || "",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -311,6 +324,29 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
               className="input"
               required
             />
+          </div>
+        </div>
+
+        {/* Participants */}
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-2">
+            👥 {language === "ro" ? "Câți parteneri cauți?" : "How many partners?"}
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {participantOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setMaxParticipants(opt.value)}
+                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                  maxParticipants === opt.value
+                    ? "bg-emerald-500 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
 

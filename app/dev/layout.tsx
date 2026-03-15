@@ -32,7 +32,7 @@ export default function DevLayout({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'rgb(var(--background))' }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D4896F]"></div>
       </div>
     );
   }
@@ -49,7 +49,7 @@ export default function DevLayout({ children }: { children: React.ReactNode }) {
         <Sidebar />
         
         {/* Main content area with sidebar offset */}
-        <div className="lg:pl-64">
+        <div className="lg:pl-72">
           {/* Mobile Header */}
           <MobileHeader />
           

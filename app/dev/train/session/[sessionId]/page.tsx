@@ -218,7 +218,7 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
         totalVolume,
       });
 
-      router.push("/train/history");
+      router.push("/dev/train/history");
     } catch (err) {
       console.error("Error finishing workout:", err);
     } finally {

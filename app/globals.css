@@ -1,71 +1,73 @@
 @import "tailwindcss";
 
 @theme {
-  /* Colors - Emerald Primary */
-  --color-primary: #10b981;
+  /* Colors - Warm Terracotta Primary (#D4896F) */
+  --color-primary: #D4896F;
   --color-primary-foreground: #ffffff;
+  --color-primary-light: #e8b59a;
   
   /* Font Family */
   --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
   /* Radius */
-  --radius-lg: 0.5rem;
-  --radius-md: 0.375rem;
-  --radius-sm: 0.25rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-md: 0.75rem;
+  --radius-sm: 0.5rem;
 }
 
 /* CSS Variables for theming */
 :root {
-  /* Primary - Emerald-500 */
-  --primary: 16 185 129;
+  /* Primary - Warm Terracotta (#D4896F) */
+  --primary: 212 137 111;
   --primary-foreground: 255 255 255;
   
-  /* Background - Light Mode */
-  --background: 255 255 255;
-  --foreground: 17 24 39;
+  /* Background - Warm Light (#F9F7F2) */
+  --background: 249 247 242;
+  --foreground: 26 26 26;
   
-  /* Card - Light Mode */
+  /* Card - White */
   --card: 255 255 255;
-  --card-foreground: 17 24 39;
-  --card-border: 226 232 240;
+  --card-foreground: 26 26 26;
+  --card-border: 241 235 229;
   
   /* Secondary */
-  --secondary: 241 245 249;
-  --secondary-foreground: 17 24 39;
+  --secondary: 241 235 229;
+  --secondary-foreground: 26 26 26;
   
   /* Muted */
-  --muted: 241 245 249;
-  --muted-foreground: 107 114 128;
+  --muted: 241 235 229;
+  --muted-foreground: 107 107 107;
   
   /* Accent */
-  --accent: 16 185 129;
-  --accent-foreground: 255 255 255;
+  --accent: 232 181 154;
+  --accent-foreground: 26 26 26;
   
   /* Destructive */
-  --destructive: 239 68 68;
+  --destructive: 212 24 61;
   --destructive-foreground: 255 255 255;
   
   /* Input */
-  --input: 226 232 240;
-  --input-foreground: 17 24 39;
+  --input: 255 252 249;
+  --input-foreground: 26 26 26;
   
   /* Ring */
-  --ring: 16 185 129;
+  --ring: 212 137 111;
   
   /* Border */
-  --border: 226 232 240;
+  --border: 241 235 229;
 }
 
 .dark {
-  /* Primary - Emerald-500 */
-  --primary: 16 185 129;
+  /* Primary - Warm Terracotta */
+  --primary: 212 137 111;
   --primary-foreground: 255 255 255;
   
-  /* Background - Dark Mode */
+  /* Background - Dark */
   --background: 3 5 7;
   --foreground: 250 250 250;
   
-  /* Card - Dark Mode */
+  /* Card - Dark */
   --card: 24 24 27;
   --card-foreground: 250 250 250;
   --card-border: 39 39 42;
@@ -79,8 +81,8 @@
   --muted-foreground: 161 161 170;
   
   /* Accent */
-  --accent: 16 185 129;
-  --accent-foreground: 255 255 255;
+  --accent: 39 39 42;
+  --accent-foreground: 250 250 250;
   
   /* Destructive */
   --destructive: 239 68 68;
@@ -91,7 +93,7 @@
   --input-foreground: 250 250 250;
   
   /* Ring */
-  --ring: 16 185 129;
+  --ring: 212 137 111;
   
   /* Border */
   --border: 39 39 42;
@@ -135,6 +137,15 @@ html {
   }
 }
 
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 .animate-slide-in {
   animation: slideIn 0.3s ease-out;
 }
@@ -143,15 +154,19 @@ html {
   animation: fadeIn 0.3s ease-out;
 }
 
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Custom scrollbar */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: #a1a1aa transparent;
+  scrollbar-color: #d4d4d8 transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
@@ -159,6 +174,27 @@ html {
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #a1a1aa;
-  border-radius: 3px;
+  background-color: rgba(212, 137, 111, 0.2);
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(212, 137, 111, 0.3);
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select, textarea {
+  transition: all 0.2s ease;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid rgb(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Font smoothing */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
