@@ -47,10 +47,18 @@ Server-side AI config:
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL` optional, defaults to `gemini-2.5-flash`
 
+Firebase Admin config:
+
+- `FIREBASE_SERVICE_ACCOUNT_PATH` for local development with a JSON key on disk
+- `FIREBASE_SERVICE_ACCOUNT_JSON` for deployments where you inject the full JSON as a secret
+- `FIREBASE_STORAGE_BUCKET` optional, defaults to `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+
 Important:
 
 - Do not expose Gemini through `NEXT_PUBLIC_*` in production.
 - The app now calls Gemini only through server routes.
+- Set only one of `FIREBASE_SERVICE_ACCOUNT_PATH` or `FIREBASE_SERVICE_ACCOUNT_JSON`.
+- On Vercel, prefer `FIREBASE_SERVICE_ACCOUNT_JSON`; absolute local paths will not exist there.
 
 ## Vercel deployment
 

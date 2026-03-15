@@ -59,20 +59,47 @@ interface LeaderboardEntry {
   rank: number;
 }
 
-// Gemini API analysis function
 async function analyzeStepsImage(imageFile: File): Promise<{ steps: number; date: string; calories?: number }> {
-  // For now, return mock data since Gemini requires API key
-  // In production, this would call Gemini Vision API
-  console.log("Analyzing image:", imageFile.name);
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Return mock data for demo
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(imageFile);
+  });
+
+  const response = await fetch("/api/stats/extract", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      imageBase64: base64.split(",")[1],
+      imageMimeType: imageFile.type,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    stats?: {
+      steps?: number;
+      calories?: number;
+    };
+  };
+
+  if (!response.ok || !payload.stats) {
+    throw new Error(payload.error || "Failed to analyze image.");
+  }
+
+  const steps = payload.stats.steps || 0;
+  if (steps <= 0) {
+    throw new Error("No step count was detected from the screenshot.");
+  }
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+
   return {
-    steps: Math.floor(Math.random() * 5000) + 5000,
-    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-    calories: Math.floor(Math.random() * 300) + 100
+    steps,
+    date: yesterday.toISOString().split("T")[0],
+    calories: payload.stats.calories,
   };
 }
 
@@ -96,7 +123,6 @@ export default function CompetitionDetailPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
-  const [highFives, setHighFives] = useState<Record<string, string[]>>({});
   const [sendingHighFive, setSendingHighFive] = useState<string | null>(null);
 
   const loadCompetition = useCallback(async (uid: string) => {
@@ -104,7 +130,7 @@ export default function CompetitionDetailPage() {
       // Load competition
       const compDoc = await getDoc(doc(db, "competitions", competitionId));
       if (!compDoc.exists()) {
-        router.push("/competition");
+        router.push("/dev/competition");
         return;
       }
       const compData = compDoc.data() as Competition;
@@ -239,7 +265,7 @@ export default function CompetitionDetailPage() {
         participants: arrayRemove(userId)
       });
       setIsParticipant(false);
-      router.push("/competition");
+      router.push("/dev/competition");
     } catch (err) {
       console.error("Error quitting:", err);
       setMessage({ type: "error", text: "Failed to quit competition" });
@@ -267,7 +293,10 @@ export default function CompetitionDetailPage() {
       setDetectedData(analysis);
     } catch (err) {
       console.error("Error analyzing image:", err);
-      setMessage({ type: "error", text: "Failed to analyze image" });
+      setMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to analyze image",
+      });
     } finally {
       setUploading(false);
     }
@@ -399,7 +428,7 @@ export default function CompetitionDetailPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button
-          onClick={() => router.push("/competition")}
+          onClick={() => router.push("/dev/competition")}
           className="flex items-center gap-2 text-zinc-600 text-slate-500 hover:text-zinc-900 hover:text-slate-900 mb-6"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
