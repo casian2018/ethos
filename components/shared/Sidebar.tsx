@@ -9,7 +9,6 @@ import {
   CalendarDays,
   Dumbbell,
   Globe,
-  GraduationCap,
   Home,
   List,
   LogOut,
@@ -41,7 +40,6 @@ const mainNavigation = [
 const extraNavigation = [
   { name: "Events", href: "/dev/events", icon: CalendarDays, emoji: "📅" },
   { name: "Competition", href: "/dev/competition", icon: Trophy, emoji: "🏆" },
-  { name: "How To", href: "/dev/how_to", icon: GraduationCap, emoji: "📘" },
 ];
 
 export default function Sidebar() {

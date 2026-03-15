@@ -11,7 +11,6 @@ import {
   Dumbbell,
   Globe,
   Home,
-  GraduationCap,
   List,
   MoonIcon,
   Sparkles,
@@ -44,7 +43,6 @@ const mainNavigation = [
 const extraNavigation = [
   { name: "Events", href: "/dev/events", icon: CalendarDays, emoji: "📅" },
   { name: "Competition", href: "/dev/competition", icon: Trophy, emoji: "🏆" },
-  { name: "How To", href: "/dev/how_to", icon: GraduationCap, emoji: "📘" },
 ];
 
 export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {

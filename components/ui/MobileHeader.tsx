@@ -21,7 +21,6 @@ function getPageMeta(pathname: string): { title: string; emoji: string } {
   if (pathname.startsWith("/dev/profile")) return { title: "Profile", emoji: "🧬" };
   if (pathname.startsWith("/dev/events")) return { title: "Events", emoji: "📅" };
   if (pathname.startsWith("/dev/competition")) return { title: "Competition", emoji: "🏆" };
-  if (pathname.startsWith("/dev/how_to")) return { title: "How To", emoji: "📘" };
   return { title: "Ethos", emoji: "✨" };
 }
 

@@ -27,7 +27,6 @@ export default function Navbar({ user }: NavbarProps) {
     { href: "/dev/forum", label: "Forum", icon: "💬" },
     { href: "/dev/competition", label: "Competitions", icon: "🏆" },
     { href: "/dev/find_a_buddy", label: "Find Buddy", icon: "🤝" },
-    { href: "/dev/how_to", label: "How To", icon: "📖" },
     { href: "/dev/sleep-analysis", label: "Sleep", icon: "😴" },
   ];
 
