@@ -118,7 +118,7 @@ export default function CompetitionPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-zinc-600 dark:text-zinc-400">
+        <div className="text-zinc-600 text-slate-500">
           {language === "ro" ? "Se încarcă..." : "Loading..."}
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function CompetitionPage() {
   return (
     <div className="max-w-4xl mx-auto p-4">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-zinc-900 text-slate-900">
           {language === "ro" ? "Competiții" : "Competitions"}
         </h1>
         <button
@@ -143,39 +143,39 @@ export default function CompetitionPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-zinc-800 rounded-lg p-4 mb-6 border border-zinc-200 dark:border-zinc-700">
-          <h3 className="font-medium text-zinc-900 dark:text-white mb-4">
+        <div className="bg-white bg-slate-50 rounded-lg p-4 mb-6 border border-zinc-200 border-slate-200">
+          <h3 className="font-medium text-zinc-900 text-slate-900 mb-4">
             {language === "ro" ? "Creează o nouă competiție" : "Create New Competition"}
           </h3>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm text-zinc-700 text-slate-600 mb-1">
                 {language === "ro" ? "Nume" : "Name"}
               </label>
               <input
                 type="text"
                 value={newCompetition.name}
                 onChange={(e) => setNewCompetition({ ...newCompetition, name: e.target.value })}
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                className="w-full px-3 py-2 border border-zinc-300 border-slate-200 rounded-lg bg-white bg-slate-100 text-zinc-900 text-slate-900"
                 placeholder={language === "ro" ? "Ex: Provocarea de Martie" : "e.g., March Challenge"}
               />
             </div>
             
             <div>
-              <label className="block text-sm text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm text-zinc-700 text-slate-600 mb-1">
                 {language === "ro" ? "Descriere" : "Description"}
               </label>
               <textarea
                 value={newCompetition.description}
                 onChange={(e) => setNewCompetition({ ...newCompetition, description: e.target.value })}
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                className="w-full px-3 py-2 border border-zinc-300 border-slate-200 rounded-lg bg-white bg-slate-100 text-zinc-900 text-slate-900"
                 rows={2}
               />
             </div>
             
             <div>
-              <label className="block text-sm text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm text-zinc-700 text-slate-600 mb-1">
                 {language === "ro" ? "Scop zilnic (pași)" : "Daily Step Goal"}: {newCompetition.dailyStepGoal.toLocaleString()}
               </label>
               <input
@@ -190,7 +190,7 @@ export default function CompetitionPage() {
             </div>
             
             <div>
-              <label className="block text-sm text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm text-zinc-700 text-slate-600 mb-1">
                 {language === "ro" ? "Durata (zile)" : "Duration (days)"}: {newCompetition.days}
               </label>
               <input
@@ -217,12 +217,12 @@ export default function CompetitionPage() {
       {/* Competition List */}
       {competitions.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-zinc-600 dark:text-zinc-400 mb-4">
+          <p className="text-zinc-600 text-slate-500 mb-4">
             {language === "ro" 
               ? "Nu există competiții momentan." 
               : "No competitions available at the moment."}
           </p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-500">
+          <p className="text-sm text-zinc-500 text-slate-500">
             {language === "ro"
               ? "Creează prima competiție!"
               : "Create the first competition!"}
@@ -233,27 +233,27 @@ export default function CompetitionPage() {
           {competitions.map((comp) => (
             <div 
               key={comp.id}
-              className="bg-white dark:bg-zinc-800 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700"
+              className="bg-white bg-slate-50 rounded-lg p-4 border border-zinc-200 border-slate-200"
             >
-              <h3 className="font-semibold text-zinc-900 dark:text-white mb-2">
+              <h3 className="font-semibold text-zinc-900 text-slate-900 mb-2">
                 {comp.name}
               </h3>
               {comp.description && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+                <p className="text-sm text-zinc-600 text-slate-500 mb-3">
                   {comp.description}
                 </p>
               )}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-500 dark:text-zinc-400">
+                <span className="text-zinc-500 text-slate-500">
                   {language === "ro" ? "Participanți" : "Participants"}: {comp.participants?.length || 0}
                 </span>
-                <span className="text-zinc-500 dark:text-zinc-400">
+                <span className="text-zinc-500 text-slate-500">
                   {language === "ro" ? "Scop" : "Goal"}: {comp.dailyStepGoal?.toLocaleString() || 10000}
                 </span>
               </div>
               <button
                 onClick={() => router.push(`/dev/competition/${comp.id}`)}
-                className="mt-3 w-full py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+                className="mt-3 w-full py-2 bg-emerald-100 bg-emerald-100 text-emerald-700 text-emerald-700 font-medium rounded-lg hover:bg-emerald-200 hover:bg-emerald-100 transition-colors"
               >
                 {language === "ro" ? "Vezi Detalii" : "View Details"}
               </button>

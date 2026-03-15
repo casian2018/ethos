@@ -1,8 +1,22 @@
 /**
- * Profile Setup - Comprehensive 9-step onboarding questionnaire
+ * Profile Setup - Complete 8-Step Onboarding Wizard
  * 
- * This creates a detailed user profile for personalized workout generation.
- * Each step collects specific data needed for AI workout planning.
+ * Features:
+ * - Multi-step wizard with progress bar
+ * - Visual card selection for Gender and Fitness Level
+ * - Health & Safety step with medical conditions
+ * - i18n support (RO/EN)
+ * - Real-time age calculation from birthDate
+ * 
+ * Steps:
+ * 1. Welcome & Introduction
+ * 2. Birth Date & Basic Info
+ * 3. Gender (Visual cards)
+ * 4. Fitness Level (Visual cards)
+ * 5. Health & Safety (Medical conditions)
+ * 6. City & Location
+ * 7. Training Preferences
+ * 8. Summary & Completion
  */
 
 "use client";
@@ -12,67 +26,115 @@ import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
-import { useLanguage } from "@/components/LanguageContext";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { calculateAge, calculateBMI } from "@/lib/types";
 
 const auth = firebaseAuth!;
 const db = firebaseDb!;
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 interface UserProfileData {
-  // Step 1: Birth Date (replaces age)
   birthDate: string;
   gender: string;
   height: string;
   weight: string;
-  
-  // Step 2: Medical Conditions
+  fitnessLevel: string;
   medicalConditions: string[];
-  
-  // Step 3: Fitness Experience
-  experienceLevel: string;
-  trainsRegularly: boolean;
-  
-  // Step 4: Preferred Sports
+  city: string;
   preferredSports: string[];
-  
-  // Step 5: Primary Goals
   goals: string[];
-  priorityGoal: string;
-  
-  // Step 6: Training Environment
-  trainingEnvironment: string;
-  homeEquipment: string[];
-  
-  // Step 7: Available Training Time
   daysPerWeek: number;
   workoutDuration: number;
-  
-  // Step 8: Fitness Limitations
-  injuries: string[];
-  
-  // Step 9: Physical Condition
-  activityLevel: string;
-  
-  // Step 10: Lifestyle Factors
-  sleepHours: number;
-  stressLevel: string;
-  dailySteps: number;
-  
-  // Step 11: Motivation Style
-  motivationType: string;
-  
-  // Profile basics
-  city: string;
-  lookingForBuddy: boolean;
 }
 
-const TOTAL_STEPS = 11;
+const TOTAL_STEPS = 8;
+
+// Gender options with visual cards
+const genderOptions = [
+  { value: "male", emoji: "👨", labelRo: "Masculin", labelEn: "Male" },
+  { value: "female", emoji: "👩", labelRo: "Feminin", labelEn: "Female" },
+  { value: "non-binary", emoji: "🧑", labelRo: "Non-binar", labelEn: "Non-binary" },
+  { value: "prefer-not-to-say", emoji: "🤐", labelRo: "Prefer să nu spun", labelEn: "Prefer not to say" },
+];
+
+// Fitness level options with visual cards
+const fitnessOptions = [
+  { 
+    value: "beginner", 
+    emoji: "🌱", 
+    labelRo: "Începător", 
+    labelEn: "Beginner",
+    descRo: "Abia încep cu sportul",
+    descEn: "Just starting with fitness"
+  },
+  { 
+    value: "intermediate", 
+    emoji: "💪", 
+    labelRo: "Intermediar", 
+    labelEn: "Intermediate",
+    descRo: "Am experiență moderată",
+    descEn: "Moderate experience"
+  },
+  { 
+    value: "advanced", 
+    emoji: "🔥", 
+    labelRo: "Avansat", 
+    labelEn: "Advanced",
+    descRo: "Sport de performanță",
+    descEn: "Competitive athlete"
+  },
+];
+
+// Medical conditions
+const medicalConditionOptions = [
+  { value: "none", emoji: "✅", labelRo: "Niciuna", labelEn: "None", descRo: "Nu am afecțiuni medicale", descEn: "No medical conditions" },
+  { value: "obesity", emoji: "⚖️", labelRo: "Obezitate", labelEn: "Obesity", descRo: "Indicele de masă corporală peste 30", descEn: "BMI over 30" },
+  { value: "anorexia", emoji: "🍽️", labelRo: "Anorexie", labelEn: "Anorexia", descRo: "Tulburare de alimentație", descEn: "Eating disorder" },
+  { value: "anemia", emoji: "🩸", labelRo: "Anemie", labelEn: "Anemia", descRo: "Nivel scăzut de fier", descEn: "Low iron levels" },
+  { value: "joint-problems", emoji: "🦴", labelRo: "Probleme articulare", labelEn: "Joint Problems", descRo: "Dureri de articulații", descEn: "Joint pain" },
+  { value: "hypertension", emoji: "❤️", labelRo: "Hipertensiune", labelEn: "Hypertension", descRo: "Tensiune arterială ridicată", descEn: "High blood pressure" },
+  { value: "diabetes", emoji: "💉", labelRo: "Diabet", labelEn: "Diabetes", descRo: "Nivel ridicat de zahăr", descEn: "High blood sugar" },
+  { value: "back-pain", emoji: "🪑", labelRo: "Dureri de spate", labelEn: "Back Pain", descRo: "Probleme cu coloana", descEn: "Spine issues" },
+  { value: "heart-condition", emoji: "❤️‍🩹", labelRo: "Probleme cardiace", labelEn: "Heart Condition", descRo: "Afecțiuni cardiovasculare", descEn: "Cardiovascular issues" },
+  { value: "asthma", emoji: "😮‍💨", labelRo: "Astm", labelEn: "Asthma", descRo: "Probleme respiratorii", descEn: "Respiratory issues" },
+];
+
+// Sports options
+const sportsOptions = [
+  { value: "gym", emoji: "🏋️", labelRo: "Sală de forță", labelEn: "Gym" },
+  { value: "running", emoji: "🏃", labelRo: "Alergare", labelEn: "Running" },
+  { value: "swimming", emoji: "🏊", labelRo: "Înot", labelEn: "Swimming" },
+  { value: "football", emoji: "⚽", labelRo: "Fotbal", labelEn: "Football" },
+  { value: "tennis", emoji: "🎾", labelRo: "Tenis", labelEn: "Tennis" },
+  { value: "yoga", emoji: "🧘", labelRo: "Yoga", labelEn: "Yoga" },
+  { value: "cycling", emoji: "🚴", labelRo: "Ciclism", labelEn: "Cycling" },
+  { value: "basketball", emoji: "🏀", labelRo: "Baschet", labelEn: "Basketball" },
+];
+
+// Goals options
+const goalsOptions = [
+  { value: "weight-loss", emoji: "📉", labelRo: "Slăbire", labelEn: "Weight Loss" },
+  { value: "muscle-gain", emoji: "💪", labelRo: "Creștere musculară", labelEn: "Muscle Gain" },
+  { value: "endurance", emoji: "🏃", labelRo: "Rezistență", labelEn: "Endurance" },
+  { value: "flexibility", emoji: "🧘", labelRo: "Flexibilitate", labelEn: "Flexibility" },
+  { value: "general-health", emoji: "❤️", labelRo: "Sănătate generală", labelEn: "General Health" },
+];
+
+// Cities
+const cities = [
+  { value: "bucharest", labelRo: "București", labelEn: "Bucharest" },
+  { value: "cluj-napoca", labelRo: "Cluj-Napoca", labelEn: "Cluj-Napoca" },
+  { value: "timisoara", labelRo: "Timișoara", labelEn: "Timișoara" },
+  { value: "iasi", labelRo: "Iași", labelEn: "Iași" },
+  { value: "constanta", labelRo: "Constanța", labelEn: "Constanța" },
+  { value: "craiova", labelRo: "Craiova", labelEn: "Craiova" },
+  { value: "brasov", labelRo: "Brașov", labelEn: "Brașov" },
+];
 
 export default function ProfileSetupPage() {
   const router = useRouter();
-  useLanguage();
+  const { t, language } = useLanguage();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,24 +145,13 @@ export default function ProfileSetupPage() {
     gender: "",
     height: "",
     weight: "",
+    fitnessLevel: "",
     medicalConditions: [],
-    experienceLevel: "",
-    trainsRegularly: false,
+    city: "",
     preferredSports: [],
     goals: [],
-    priorityGoal: "",
-    trainingEnvironment: "",
-    homeEquipment: [],
     daysPerWeek: 3,
-    workoutDuration: 30,
-    injuries: [],
-    activityLevel: "",
-    sleepHours: 7,
-    stressLevel: "moderate",
-    dailySteps: 5000,
-    motivationType: "",
-    city: "",
-    lookingForBuddy: false,
+    workoutDuration: 60,
   });
 
   useEffect(() => {
@@ -121,10 +172,14 @@ export default function ProfileSetupPage() {
 
   const toggleArrayItem = (field: keyof UserProfileData, item: string) => {
     const current = formData[field] as string[];
-    const updated = current.includes(item)
-      ? current.filter(i => i !== item)
-      : [...current, item];
-    updateField(field, updated);
+    if (item === "none") {
+      updateField(field, ["none"]);
+    } else {
+      const updated = current.includes(item)
+        ? current.filter(i => i !== item)
+        : [...current.filter(i => i !== "none"), item];
+      updateField(field, updated);
+    }
   };
 
   const nextStep = () => {
@@ -141,17 +196,14 @@ export default function ProfileSetupPage() {
 
   const canProceed = () => {
     switch (step) {
-      case 1: return formData.birthDate && formData.gender && formData.height && formData.weight;
-      case 2: return formData.medicalConditions.length > 0;
-      case 3: return formData.experienceLevel;
-      case 4: return formData.preferredSports.length > 0;
-      case 5: return formData.goals.length > 0 && formData.priorityGoal;
-      case 6: return formData.trainingEnvironment;
-      case 7: return formData.daysPerWeek && formData.workoutDuration;
-      case 8: return true; // Injuries are optional
-      case 9: return formData.activityLevel;
-      case 10: return formData.sleepHours && formData.stressLevel;
-      case 11: return formData.motivationType;
+      case 1: return true;
+      case 2: return formData.birthDate && formData.height && formData.weight;
+      case 3: return formData.gender;
+      case 4: return formData.fitnessLevel;
+      case 5: return formData.medicalConditions.length > 0;
+      case 6: return formData.city;
+      case 7: return formData.preferredSports.length > 0 && formData.goals.length > 0;
+      case 8: return true;
       default: return false;
     }
   };
@@ -161,7 +213,6 @@ export default function ProfileSetupPage() {
     setSaving(true);
     
     try {
-      // Calculate derived fields
       const height = parseInt(formData.height);
       const weight = parseInt(formData.weight);
       const bmi = calculateBMI(height, weight);
@@ -169,17 +220,13 @@ export default function ProfileSetupPage() {
       
       await setDoc(doc(db, "users", userId), {
         ...formData,
-        // Store birthDate as-is
         birthDate: formData.birthDate,
-        // Also store calculated age for easier queries
         age,
         bmi,
         height,
         weight,
         daysPerWeek: parseInt(formData.daysPerWeek.toString()),
         workoutDuration: parseInt(formData.workoutDuration.toString()),
-        sleepHours: parseInt(formData.sleepHours.toString()),
-        dailySteps: parseInt(formData.dailySteps.toString()),
         createdAt: new Date(),
         updatedAt: new Date(),
         onboardingComplete: true,
@@ -195,662 +242,409 @@ export default function ProfileSetupPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
       </div>
     );
   }
 
+  const progress = (step / TOTAL_STEPS) * 100;
+
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 py-8 px-4">
-      <div className="max-w-lg mx-auto">
-        {/* Progress Indicator */}
+    <div className="min-h-screen bg-slate-50 py-8 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">
-              Step {step} of {TOTAL_STEPS}
+            <span className="text-sm font-medium text-slate-600">
+              {language === "ro" ? "Pasul" : "Step"} {step} / {TOTAL_STEPS}
             </span>
-            <span className="text-sm text-emerald-600 dark:text-emerald-400">
-              {Math.round((step / TOTAL_STEPS) * 100)}%
+            <span className="text-sm font-medium text-emerald-600">
+              {Math.round(progress)}%
             </span>
           </div>
-          <div className="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-emerald-500 transition-all duration-300"
-              style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-emerald-500 to-blue-500 transition-all duration-500"
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
-        {/* Step Cards */}
-        <div className="card p-6 animate-fade-in">
-          {/* STEP 1: Basic Body Data */}
+        {/* Step Content */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8">
+          
+          {/* STEP 1: Welcome */}
           {step === 1 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                Let&apos;s get to know you
+            <div className="text-center">
+              <div className="text-6xl mb-4">👋</div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Bine ai venit în Ethos!" : "Welcome to Ethos!"}
               </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                This helps us create workouts that are safe and effective for your body.
+              <p className="text-slate-600 mb-6">
+                {language === "ro" 
+                  ? "Să configurăm profilul tău pentru antrenamente personalizate și sigure."
+                  : "Let's set up your profile for personalized and safe workouts."}
+              </p>
+              <div className="grid grid-cols-2 gap-4 text-left mt-8">
+                <div className="p-4 bg-emerald-50 rounded-xl">
+                  <div className="text-2xl mb-2">🎯</div>
+                  <h3 className="font-semibold text-slate-900">
+                    {language === "ro" ? "Antrenamente Personalizate" : "Personalized Workouts"}
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    {language === "ro" ? "AI-ul creează planuri pentru tine" : "AI creates plans for you"}
+                  </p>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-xl">
+                  <div className="text-2xl mb-2">🤝</div>
+                  <h3 className="font-semibold text-slate-900">
+                    {language === "ro" ? "Găsește Parteneri" : "Find Partners"}
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    {language === "ro" ? "Antrenează-te cu prieteni" : "Train with friends"}
+                  </p>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-xl">
+                  <div className="text-2xl mb-2">📊</div>
+                  <h3 className="font-semibold text-slate-900">
+                    {language === "ro" ? "Urmărește Progresul" : "Track Progress"}
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    {language === "ro" ? "Vezi statistici detaliate" : "See detailed stats"}
+                  </p>
+                </div>
+                <div className="p-4 bg-amber-50 rounded-xl">
+                  <div className="text-2xl mb-2">💡</div>
+                  <h3 className="font-semibold text-slate-900">
+                    {language === "ro" ? "Sfaturi Smart" : "Smart Tips"}
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    {language === "ro" ? "Recomandări bazate pe date" : "Data-driven recommendations"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: Birth Date & Basic Info */}
+          {step === 2 && (
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Câteva informații de bază" : "Some basic information"}
+              </h1>
+              <p className="text-slate-600 mb-6">
+                {language === "ro" 
+                  ? "Aceste date ne ajută să calculăm vârsta și să creăm antrenamente sigure."
+                  : "This data helps us calculate age and create safe workouts."}
               </p>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Data Nașterii *
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {language === "ro" ? "Data nașterii" : "Birth Date"} *
                   </label>
                   <input
                     type="date"
                     value={formData.birthDate}
                     onChange={(e) => updateField("birthDate", e.target.value)}
-                    className="input"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none"
                     max={new Date().toISOString().split('T')[0]}
                   />
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Vârsta va fi calculată automat din data nașterii
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Gender *
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {["male", "female", "other"].map((g) => (
-                      <button
-                        key={g}
-                        onClick={() => updateField("gender", g)}
-                        className={`p-3 rounded-lg border-2 transition-all ${
-                          formData.gender === g
-                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                            : "border-zinc-200 dark:border-zinc-700"
-                        }`}
-                      >
-                        <span className="text-2xl block mb-1">
-                          {g === "male" ? "👨" : g === "female" ? "👩" : "🧑"}
-                        </span>
-                        <span className="text-sm capitalize text-zinc-700 dark:text-zinc-300">
-                          {g}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  {formData.birthDate && (
+                    <p className="text-sm text-emerald-600 mt-2 font-medium">
+                      {language === "ro" ? "Vârsta:" : "Age:"} {calculateAge(formData.birthDate)} {language === "ro" ? "ani" : "years"}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Height (cm) *
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {language === "ro" ? "Înălțime (cm)" : "Height (cm)"} *
                     </label>
                     <input
                       type="number"
                       value={formData.height}
                       onChange={(e) => updateField("height", e.target.value)}
-                      className="input"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none"
                       placeholder="175"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Weight (kg) *
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      {language === "ro" ? "Greutate (kg)" : "Weight (kg)"} *
                     </label>
                     <input
                       type="number"
                       value={formData.weight}
                       onChange={(e) => updateField("weight", e.target.value)}
-                      className="input"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none"
                       placeholder="70"
                     />
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
-          {/* STEP 2: Medical Conditions */}
-          {step === 2 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                Stare de Sănătate
-              </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                Afecțiunile medicale vor influența tipul de antrenamente recomandate.
-              </p>
-              
-              <div className="space-y-3">
-                {[
-                  { value: "none", label: "Niciuna", desc: "Nu am nicio afecțiune medicală", emoji: "✅" },
-                  { value: "obesity", label: "Obezitate", desc: "Indicele de masă corporală peste 30", emoji: "⚖️" },
-                  { value: "anorexia", label: "Anorexie", desc: "Tulburare de alimentație", emoji: "🍽️" },
-                  { value: "anemia", label: "Anemie", desc: "Nivel scăzut de fier în sânge", emoji: "🩸" },
-                ].map((condition) => (
-                  <button
-                    key={condition.value}
-                    onClick={() => updateField("medicalConditions", [condition.value])}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                      formData.medicalConditions.includes(condition.value)
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{condition.emoji}</span>
-                      <div>
-                        <p className="font-semibold text-zinc-900 dark:text-white">{condition.label}</p>
-                        <p className="text-sm text-zinc-500">{condition.desc}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* STEP 3: Fitness Experience */}
+          {/* STEP 3: Gender (Visual Cards) */}
           {step === 3 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                What&apos;s your training experience?
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Cum te identifici?" : "How do you identify?"}
               </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                This helps us match exercises to your fitness level.
+              <p className="text-slate-600 mb-6">
+                {language === "ro" 
+                  ? "Alegerea ta ne ajută să adaptăm antrenamentele."
+                  : "Your choice helps us adapt workouts."}
               </p>
               
-              <div className="space-y-3">
-                {[
-                  { value: "beginner", label: "Beginner", desc: "Never trained or less than 6 months", emoji: "🌱" },
-                  { value: "intermediate", label: "Intermediate", desc: "6 months to 2 years", emoji: "💪" },
-                  { value: "advanced", label: "Advanced", desc: "2+ years of training", emoji: "🏆" },
-                ].map((level) => (
+              <div className="grid grid-cols-2 gap-4">
+                {genderOptions.map((option) => (
                   <button
-                    key={level.value}
-                    onClick={() => updateField("experienceLevel", level.value)}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                      formData.experienceLevel === level.value
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
+                    key={option.value}
+                    onClick={() => updateField("gender", option.value)}
+                    className={`p-6 rounded-xl border-2 text-center transition-all ${
+                      formData.gender === option.value
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 hover:border-slate-300"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{level.emoji}</span>
-                      <div>
-                        <p className="font-semibold text-zinc-900 dark:text-white">{level.label}</p>
-                        <p className="text-sm text-zinc-500">{level.desc}</p>
-                      </div>
+                    <div className="text-4xl mb-2">{option.emoji}</div>
+                    <div className="font-medium text-slate-900">
+                      {language === "ro" ? option.labelRo : option.labelEn}
                     </div>
                   </button>
                 ))}
               </div>
-              
-              <div className="mt-6 p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.trainsRegularly}
-                    onChange={(e) => updateField("trainsRegularly", e.target.checked)}
-                    className="w-5 h-5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="text-zinc-700 dark:text-zinc-300">
-                    I currently train regularly
-                  </span>
-                </label>
-              </div>
-            </>
+            </div>
           )}
 
-          {/* STEP 3: Primary Goals */}
-          {step === 3 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                What are your fitness goals?
-              </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                Select all that apply and choose your top priority.
-              </p>
-              
-              <div className="space-y-3 mb-6">
-                {[
-                  { value: "lose fat", label: "Lose Fat", emoji: "🔥" },
-                  { value: "gain muscle", label: "Gain Muscle", emoji: "💪" },
-                  { value: "strength", label: "Increase Strength", emoji: "🏋️" },
-                  { value: "endurance", label: "Improve Endurance", emoji: "🏃" },
-                  { value: "general", label: "General Fitness", emoji: "⚖️" },
-                  { value: "athletic", label: "Athletic Performance", emoji: "🎯" },
-                ].map((goal) => (
-                  <button
-                    key={goal.value}
-                    onClick={() => toggleArrayItem("goals", goal.value)}
-                    className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
-                      formData.goals.includes(goal.value)
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{goal.emoji}</span>
-                      <span className="text-zinc-700 dark:text-zinc-300">{goal.label}</span>
-                      {formData.goals.includes(goal.value) && (
-                        <span className="ml-auto text-emerald-500">✓</span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-              
-              {formData.goals.length > 0 && (
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Your top priority goal:
-                  </p>
-                  <select
-                    value={formData.priorityGoal}
-                    onChange={(e) => updateField("priorityGoal", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select priority...</option>
-                    {formData.goals.map((g) => (
-                      <option key={g} value={g}>
-                        {g.charAt(0).toUpperCase() + g.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* STEP 4: Preferred Sports */}
+          {/* STEP 4: Fitness Level (Visual Cards) */}
           {step === 4 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                Sporturi Preferate
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Care este nivelul tău de fitness?" : "What is your fitness level?"}
               </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                Selectează sporturile pe care le practici sau ai dori să le încerci.
+              <p className="text-slate-600 mb-6">
+                {language === "ro" 
+                  ? "Alege nivelul care te descrie cel mai bine."
+                  : "Choose the level that best describes you."}
+              </p>
+              
+              <div className="space-y-4">
+                {fitnessOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => updateField("fitnessLevel", option.value)}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      formData.fitnessLevel === option.value
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-3xl">{option.emoji}</span>
+                      <div>
+                        <div className="font-semibold text-slate-900">
+                          {language === "ro" ? option.labelRo : option.labelEn}
+                        </div>
+                        <div className="text-sm text-slate-500">
+                          {language === "ro" ? option.descRo : option.descEn}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: Health & Safety (Medical Conditions) */}
+          {step === 5 && (
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Sănătate și Siguranță" : "Health & Safety"}
+              </h1>
+              <p className="text-slate-600 mb-4">
+                {language === "ro" 
+                  ? "Selectează orice afecțiune care te-ar putea afecta la antrenamente."
+                  : "Select any conditions that might affect your workouts."}
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-6">
+                <p className="text-sm text-amber-800">
+                  💡 {language === "ro" 
+                    ? "Antrenamentele tale vor fi adaptate automat pentru condițiile selectate."
+                    : "Your workouts will be automatically adapted for selected conditions."}
+                </p>
+              </div>
+              
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {medicalConditionOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => toggleArrayItem("medicalConditions", option.value)}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      formData.medicalConditions.includes(option.value)
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{option.emoji}</span>
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {language === "ro" ? option.labelRo : option.labelEn}
+                        </div>
+                        <div className="text-sm text-slate-500">
+                          {language === "ro" ? option.descRo : option.descEn}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 6: City & Location */}
+          {step === 6 && (
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Unde te afli?" : "Where are you located?"}
+              </h1>
+              <p className="text-slate-600 mb-6">
+                {language === "ro" 
+                  ? "Alege orașul pentru a găsi parteneri de antrenament aproape de tine."
+                  : "Choose your city to find workout partners near you."}
               </p>
               
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: "gym", label: "Sala", emoji: "🏋️" },
-                  { value: "ping_pong", label: "Ping Pong", emoji: "🏓" },
-                  { value: "football", label: "Fotbal", emoji: "⚽" },
-                  { value: "tennis", label: "Tenis", emoji: "🎾" },
-                  { value: "swimming", label: "Înot", emoji: "🏊" },
-                  { value: "running", label: "Alergat", emoji: "🏃" },
-                  { value: "cycling", label: "Ciclism", emoji: "🚴" },
-                  { value: "basketball", label: "Baschet", emoji: "🏀" },
-                  { value: "volleyball", label: "Volei", emoji: "🏐" },
-                  { value: "yoga", label: "Yoga", emoji: "🧘" },
-                  { value: "dancing", label: "Dans", emoji: "💃" },
-                  { value: "martial_arts", label: "Arte Marțiale", emoji: "🥋" },
-                ].map((sport) => (
+                {cities.map((city) => (
                   <button
-                    key={sport.value}
-                    onClick={() => {
-                      const current = formData.preferredSports;
-                      if (current.includes(sport.value)) {
-                        updateField("preferredSports", current.filter(s => s !== sport.value));
-                      } else {
-                        updateField("preferredSports", [...current, sport.value]);
-                      }
-                    }}
+                    key={city.value}
+                    onClick={() => updateField("city", city.value)}
                     className={`p-4 rounded-xl border-2 text-center transition-all ${
-                      formData.preferredSports.includes(sport.value)
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
+                      formData.city === city.value
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 hover:border-slate-300"
                     }`}
                   >
-                    <span className="text-2xl block mb-1">{sport.emoji}</span>
-                    <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      {sport.label}
+                    <span className="font-medium text-slate-900">
+                      {language === "ro" ? city.labelRo : city.labelEn}
                     </span>
                   </button>
                 ))}
               </div>
-              
-              {formData.preferredSports.length > 0 && (
-                <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-4 text-center">
-                  {formData.preferredSports.length} selectate
-                </p>
-              )}
-            </>
+            </div>
           )}
 
-          {/* STEP 5: Training Environment */}
-          {step === 5 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                Where do you train?
-              </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                This determines what exercises we can include in your plan.
-              </p>
-              
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                {[
-                  { value: "gym", label: "Gym", emoji: "🏋️" },
-                  { value: "home", label: "Home", emoji: "🏠" },
-                  { value: "both", label: "Both", emoji: "🔄" },
-                ].map((env) => (
-                  <button
-                    key={env.value}
-                    onClick={() => updateField("trainingEnvironment", env.value)}
-                    className={`p-4 rounded-xl border-2 text-center transition-all ${
-                      formData.trainingEnvironment === env.value
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
-                    }`}
-                  >
-                    <span className="text-3xl block mb-1">{env.emoji}</span>
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">{env.label}</span>
-                  </button>
-                ))}
-              </div>
-              
-              {formData.trainingEnvironment === "home" && (
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                    What equipment do you have at home?
-                  </p>
-                  <div className="space-y-2">
-                    {[
-                      { value: "none", label: "None (bodyweight only)", emoji: "🙂" },
-                      { value: "dumbbells", label: "Dumbbells", emoji: "🏋️" },
-                      { value: "bands", label: "Resistance Bands", emoji: "➰" },
-                      { value: "pullupbar", label: "Pull-up Bar", emoji: "单" },
-                      { value: "kettlebell", label: "Kettlebell", emoji: "🔔" },
-                    ].map((equip) => (
-                      <label key={equip.value} className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.homeEquipment.includes(equip.value)}
-                          onChange={() => toggleArrayItem("homeEquipment", equip.value)}
-                          className="w-4 h-4 rounded border-zinc-300 text-emerald-600"
-                        />
-                        <span className="text-zinc-700 dark:text-zinc-300">{equip.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* STEP 6: Available Training Time */}
-          {step === 6 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                How much time can you commit?
-              </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                We&apos;ll design a plan that fits your schedule.
-              </p>
-              
-              <div className="mb-6">
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                  Days per week
-                </p>
-                <div className="grid grid-cols-5 gap-2">
-                  {[2, 3, 4, 5, 6].map((days) => (
-                    <button
-                      key={days}
-                      onClick={() => updateField("daysPerWeek", days)}
-                      className={`p-3 rounded-lg border-2 font-semibold transition-all ${
-                        formData.daysPerWeek === days
-                          ? "border-emerald-500 bg-emerald-500 text-white"
-                          : "border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      {days}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                  Average workout duration
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 20, label: "20 min" },
-                    { value: 30, label: "30 min" },
-                    { value: 45, label: "45 min" },
-                    { value: 60, label: "60 min" },
-                    { value: 90, label: "90 min" },
-                  ].map((dur) => (
-                    <button
-                      key={dur.value}
-                      onClick={() => updateField("workoutDuration", dur.value)}
-                      className={`p-3 rounded-lg border-2 font-medium transition-all ${
-                        formData.workoutDuration === dur.value
-                          ? "border-emerald-500 bg-emerald-500 text-white"
-                          : "border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      {dur.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* STEP 7: Fitness Limitations */}
+          {/* STEP 7: Training Preferences */}
           {step === 7 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                Any injuries or limitations?
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Preferințe de Antrenament" : "Training Preferences"}
               </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                This helps us avoid exercises that could cause discomfort or injury.
+              <p className="text-slate-600 mb-4">
+                {language === "ro" 
+                  ? "Ce sporturi practici și ce obiective ai?"
+                  : "What sports do you practice and what are your goals?"}
               </p>
               
-              <div className="space-y-2 mb-6">
-                {[
-                  { value: "none", label: "No injuries or limitations", emoji: "✅" },
-                  { value: "back", label: "Back pain", emoji: "🪓" },
-                  { value: "knee", label: "Knee issues", emoji: "🦵" },
-                  { value: "shoulder", label: "Shoulder problems", emoji: "💪" },
-                  { value: "wrist", label: "Wrist/Elbow", emoji: "🤲" },
-                  { value: "neck", label: "Neck pain", emoji: "😣" },
-                  { value: "hip", label: "Hip issues", emoji: "🦴" },
-                  { value: "ankle", label: "Ankle injuries", emoji: "🦶" },
-                ].map((injury) => (
-                  <button
-                    key={injury.value}
-                    onClick={() => {
-                      if (injury.value === "none") {
-                        updateField("injuries", []);
-                      } else {
-                        toggleArrayItem("injuries", injury.value);
-                        // Remove "none" if selecting an injury
-                        if (!formData.injuries.includes("none") && formData.injuries.length > 0) {
-                          updateField("injuries", formData.injuries.filter(i => i !== "none"));
-                        }
-                      }
-                    }}
-                    className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
-                      formData.injuries.includes(injury.value)
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{injury.emoji}</span>
-                      <span className="text-zinc-700 dark:text-zinc-300">{injury.label}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* STEP 8: Physical Condition */}
-          {step === 8 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                What&apos;s your current activity level?
-              </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                This helps us gauge your baseline fitness.
-              </p>
-              
-              <div className="space-y-3">
-                {[
-                  { value: "sedentary", label: "Sedentary", desc: "Little to no exercise, desk job", emoji: "🪑" },
-                  { value: "light", label: "Lightly Active", desc: "Light exercise 1-3 days/week", emoji: "🚶" },
-                  { value: "moderate", label: "Moderately Active", desc: "Exercise 3-5 days/week", emoji: "🏃" },
-                  { value: "very", label: "Very Active", desc: "Hard exercise 6-7 days/week", emoji: "🔥" },
-                ].map((level) => (
-                  <button
-                    key={level.value}
-                    onClick={() => updateField("activityLevel", level.value)}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                      formData.activityLevel === level.value
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{level.emoji}</span>
-                      <div>
-                        <p className="font-semibold text-zinc-900 dark:text-white">{level.label}</p>
-                        <p className="text-sm text-zinc-500">{level.desc}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* STEP 9: Lifestyle Factors */}
-          {step === 9 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                A few more details
-              </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                These factors help us optimize your training and recovery.
-              </p>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Average sleep per night
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="range"
-                      min="4"
-                      max="10"
-                      value={formData.sleepHours}
-                      onChange={(e) => updateField("sleepHours", parseInt(e.target.value))}
-                      className="flex-1"
-                    />
-                    <span className="text-lg font-semibold text-zinc-900 dark:text-white w-16 text-center">
-                      {formData.sleepHours}h
-                    </span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Stress level
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {["low", "moderate", "high"].map((stress) => (
-                      <button
-                        key={stress}
-                        onClick={() => updateField("stressLevel", stress)}
-                        className={`p-3 rounded-lg border-2 capitalize transition-all ${
-                          formData.stressLevel === stress
-                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                            : "border-zinc-200 dark:border-zinc-700"
-                        }`}
-                      >
-                        {stress}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Average daily steps
-                  </label>
-                  <select
-                    value={formData.dailySteps}
-                    onChange={(e) => updateField("dailySteps", parseInt(e.target.value))}
-                    className="input"
-                  >
-                    <option value="3000">Less than 5,000</option>
-                    <option value="5000">5,000 - 7,500</option>
-                    <option value="7500">7,500 - 10,000</option>
-                    <option value="10000">10,000+</option>
-                  </select>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* STEP 10: Motivation Style */}
-          {step === 10 && (
-            <>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
-                What motivates you?
-              </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                We&apos;ll tailor your experience to keep you engaged.
-              </p>
-              
-              <div className="space-y-3">
-                {[
-                  { value: "structured", label: "Structured Programs", desc: "Follow a clear plan step by step", emoji: "📋" },
-                  { value: "flexible", label: "Flexible Workouts", desc: "Choose what feels right that day", emoji: "🎨" },
-                  { value: "competitive", label: "Competitive Challenges", desc: "Race to beat my personal best", emoji: "🏆" },
-                  { value: "social", label: "Training with Buddy", desc: "More fun with friends", emoji: "👥" },
-                ].map((mot) => (
-                  <button
-                    key={mot.value}
-                    onClick={() => updateField("motivationType", mot.value)}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                      formData.motivationType === mot.value
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{mot.emoji}</span>
-                      <div>
-                        <p className="font-semibold text-zinc-900 dark:text-white">{mot.label}</p>
-                        <p className="text-sm text-zinc-500">{mot.desc}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              
-              <div className="mt-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.lookingForBuddy}
-                    onChange={(e) => updateField("lookingForBuddy", e.target.checked)}
-                    className="w-5 h-5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <div>
-                    <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                      I&apos;m looking for a workout buddy
-                    </span>
-                    <p className="text-sm text-zinc-500">
-                      Get matched with people in your area
-                    </p>
-                  </div>
+              {/* Sports */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  {language === "ro" ? "Sporturi preferate *" : "Preferred sports *"}
                 </label>
+                <div className="flex flex-wrap gap-2">
+                  {sportsOptions.map((sport) => (
+                    <button
+                      key={sport.value}
+                      onClick={() => toggleArrayItem("preferredSports", sport.value)}
+                      className={`px-4 py-2 rounded-full border-2 transition-all ${
+                        formData.preferredSports.includes(sport.value)
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                          : "border-slate-200 text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      {sport.emoji} {language === "ro" ? sport.labelRo : sport.labelEn}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </>
+              
+              {/* Goals */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  {language === "ro" ? "Obiective *" : "Goals *"}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {goalsOptions.map((goal) => (
+                    <button
+                      key={goal.value}
+                      onClick={() => toggleArrayItem("goals", goal.value)}
+                      className={`px-4 py-2 rounded-full border-2 transition-all ${
+                        formData.goals.includes(goal.value)
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-slate-200 text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      {goal.emoji} {language === "ro" ? goal.labelRo : goal.labelEn}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 8: Summary */}
+          {step === 8 && (
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {language === "ro" ? "Gata!" : "Ready!"}
+              </h1>
+              <p className="text-slate-600 mb-6">
+                {language === "ro" 
+                  ? "Iată un rezumat al profilului tău:"
+                  : "Here's a summary of your profile:"}
+              </p>
+              
+              <div className="space-y-4 bg-slate-50 rounded-xl p-4">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{language === "ro" ? "Vârstă" : "Age"}</span>
+                  <span className="font-medium text-slate-900">{calculateAge(formData.birthDate) || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{language === "ro" ? "Gen" : "Gender"}</span>
+                  <span className="font-medium text-slate-900">
+                    {genderOptions.find(g => g.value === formData.gender)?.emoji} {language === "ro" ? genderOptions.find(g => g.value === formData.gender)?.labelRo : genderOptions.find(g => g.value === formData.gender)?.labelEn}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{language === "ro" ? "Nivel" : "Level"}</span>
+                  <span className="font-medium text-slate-900">
+                    {fitnessOptions.find(f => f.value === formData.fitnessLevel)?.emoji} {language === "ro" ? fitnessOptions.find(f => f.value === formData.fitnessLevel)?.labelRo : fitnessOptions.find(f => f.value === formData.fitnessLevel)?.labelEn}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{language === "ro" ? "Oraș" : "City"}</span>
+                  <span className="font-medium text-slate-900">{cities.find(c => c.value === formData.city)?.labelRo || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{language === "ro" ? "Sporturi" : "Sports"}</span>
+                  <span className="font-medium text-slate-900">{formData.preferredSports.length}</span>
+                </div>
+                {formData.medicalConditions.length > 0 && !formData.medicalConditions.includes("none") && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">❤️</span>
+                    <span className="font-medium text-amber-600">
+                      {language === "ro" ? "Atenționări medicale active" : "Active medical warnings"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Navigation Buttons */}
@@ -858,26 +652,36 @@ export default function ProfileSetupPage() {
             {step > 1 && (
               <button
                 onClick={prevStep}
-                className="btn-secondary flex-1"
+                className="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
               >
-                Back
+                {language === "ro" ? "Înapoi" : "Back"}
               </button>
             )}
             {step < TOTAL_STEPS ? (
               <button
                 onClick={nextStep}
                 disabled={!canProceed()}
-                className="btn-primary flex-1"
+                className="flex-1 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 text-white font-medium transition-colors"
               >
-                Continue
+                {language === "ro" ? "Continuă" : "Continue"}
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
-                disabled={!canProceed() || saving}
-                className="btn-primary flex-1"
+                disabled={saving}
+                className="flex-1 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 text-white font-medium transition-colors flex items-center justify-center gap-2"
               >
-                {saving ? "Saving..." : "Complete Setup"}
+                {saving ? (
+                  <>
+                    <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    {language === "ro" ? "Se salvează..." : "Saving..."}
+                  </>
+                ) : (
+                  language === "ro" ? "Finalizează" : "Complete"
+                )}
               </button>
             )}
           </div>

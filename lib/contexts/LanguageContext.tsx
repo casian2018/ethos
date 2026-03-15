@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 type Language = "en" | "ro";
-type Theme = "light" | "dark";
+type Theme = "light";
 
 interface LanguageContextType {
   language: Language;
@@ -35,6 +35,55 @@ const translations: Record<Language, Record<string, string>> = {
     "settings": "Settings",
     "darkMode": "Dark Mode",
     "lightMode": "Light Mode",
+    
+    // Sleep Biohacking Hub
+    "sleep.title": "Sleep Biohacking",
+    "sleep.subtitle": "Optimize your sleep for peak performance",
+    "sleep.import": "Import Sleep Data",
+    "sleep.upload": "Upload Sleep Data",
+    "sleep.dragDrop": "Drag & drop your screenshot",
+    "sleep.orClick": "or click to browse",
+    "sleep.supportedFormats": "PNG, JPG up to 10MB",
+    "sleep.processing": "Processing...",
+    "sleep.analyzing": "AI is analyzing your sleep data",
+    "sleep.progress": "Analyzing: ",
+    "sleep.weeklyComparison": "Weekly Sleep Comparison",
+    "sleep.target": "Target",
+    "sleep.actual": "Actual",
+    "sleep.avgTarget": "Avg Target",
+    "sleep.avgActual": "Avg Actual",
+    "sleep.difference": "Difference",
+    "sleep.timeline": "Sleep Timeline",
+    "sleep.chronotype": "Your Sleep Animal",
+    "sleep.tips": "Personalized Tips",
+    "sleep.noData": "No sleep data yet",
+    "sleep.importFirst": "Import a screenshot to get started",
+    // Sleep terms
+    "sleep.rem": "REM Sleep",
+    "sleep.deepSleep": "Deep Sleep",
+    "sleep.lightSleep": "Light Sleep",
+    "sleep.sleepLatency": "Sleep Latency",
+    "sleep.efficiency": "Efficiency",
+    "sleep.bedtime": "Bedtime",
+    "sleep.wakeTime": "Wake Time",
+    "sleep.totalSleep": "Total Sleep",
+    "sleep.recovery": "Recovery Score",
+
+    // Stats
+    "stats.title": "Activity Dashboard",
+    "stats.subtitle": "Track your fitness progress",
+    "stats.steps": "Steps",
+    "stats.calories": "Calories",
+    "stats.active": "Active",
+    "stats.streak": "Streak",
+    "stats.daysInRow": "days in a row",
+    "stats.target": "Target",
+    "stats.weeklyActivity": "Weekly Activity",
+    "stats.weeklySteps": "weekly steps",
+    "stats.weeklyCalories": "weekly calories",
+    "stats.weeklyActiveMin": "weekly active min",
+    "stats.achievements": "Achievements",
+    "stats.adaptiveTarget": "Adaptive targets for your medical conditions. Daily steps:",
     
     // Dashboard
     "dashboard.title": "Dashboard",
@@ -244,6 +293,55 @@ const translations: Record<Language, Record<string, string>> = {
     "darkMode": "Mod Întunecat",
     "lightMode": "Mod Luminos",
     
+    // Sleep Biohacking Hub
+    "sleep.title": "Biohacking Somn",
+    "sleep.subtitle": "Optimizează-ți somnul pentru performanță maximă",
+    "sleep.import": "Importă Date Somn",
+    "sleep.upload": "Încarcă Date Somn",
+    "sleep.dragDrop": "Trage și plasează screenshot-ul",
+    "sleep.orClick": "sau click pentru a răsfoi",
+    "sleep.supportedFormats": "PNG, JPG până la 10MB",
+    "sleep.processing": "Se procesează...",
+    "sleep.analyzing": "AI analizează datele tale de somn",
+    "sleep.progress": "Se analizează: ",
+    "sleep.weeklyComparison": "Comparație Săptămânală Somn",
+    "sleep.target": "Țintă",
+    "sleep.actual": "Real",
+    "sleep.avgTarget": "Medie Țintă",
+    "sleep.avgActual": "Medie Reală",
+    "sleep.difference": "Diferență",
+    "sleep.timeline": "Timeline Somn",
+    "sleep.chronotype": "Animalul Tău de Somn",
+    "sleep.tips": "Sfaturi Personalizate",
+    "sleep.noData": "Încă nu ai date de somn",
+    "sleep.importFirst": "Importă un screenshot pentru a începe",
+    // Sleep terms
+    "sleep.rem": "Somn REM",
+    "sleep.deepSleep": "Somn Profund",
+    "sleep.lightSleep": "Somn Ușor",
+    "sleep.sleepLatency": "Latența Somnului",
+    "sleep.efficiency": "Eficiență",
+    "sleep.bedtime": "Ora de Culcare",
+    "sleep.wakeTime": "Ora de Trezire",
+    "sleep.totalSleep": "Somn Total",
+    "sleep.recovery": "Scor Recuperare",
+
+    // Stats (Romanian)
+    "stats.title": "Dashboard Activitate",
+    "stats.subtitle": "Urmărește-ți progresul fitness",
+    "stats.steps": "Pași",
+    "stats.calories": "Calorii",
+    "stats.active": "Activ",
+    "stats.streak": "Streak",
+    "stats.daysInRow": "zile consecutive",
+    "stats.target": "Target",
+    "stats.weeklyActivity": "Activitate Săptămânală",
+    "stats.weeklySteps": "pași săpt.",
+    "stats.weeklyCalories": "calorii săpt.",
+    "stats.weeklyActiveMin": "min active săpt.",
+    "stats.achievements": "Realizări",
+    "stats.adaptiveTarget": "Target-uri adaptate pentru condițiile tale medicale. Pași zilnici:",
+    
     // Dashboard
     "dashboard.title": "Panou",
     "dashboard.subtitle": "Urmărește-ți călătoria fitness",
@@ -449,7 +547,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       if (savedTheme) {
         return savedTheme;
       }
-      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      return "light";
     }
     return "light";
   });
@@ -460,23 +558,26 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [language]);
 
+  // Force light mode only - remove dark mode functionality
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("ethos-theme", theme);
-      document.documentElement.classList.toggle("dark", theme === "dark");
+      localStorage.setItem("ethos-theme", "light");
+      document.documentElement.classList.remove("dark");
+      document.documentElement.classList.add("light");
     }
-  }, [theme]);
+  }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
   };
 
+  // Theme is always light - no toggle functionality
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
+    setThemeState("light");
   };
 
   const toggleTheme = () => {
-    setThemeState(prev => prev === "light" ? "dark" : "light");
+    // No-op - dark mode disabled
   };
 
   const t = (key: string): string => {

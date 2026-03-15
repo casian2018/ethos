@@ -54,21 +54,21 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 px-4">
-      <div className="max-w-md w-full bg-white dark:bg-zinc-800 rounded-lg shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-center text-zinc-900 dark:text-white mb-6">
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white px-4">
+      <div className="max-w-md w-full bg-white bg-slate-50 rounded-lg shadow-lg p-8">
+        <h1 className="text-2xl font-bold text-center text-zinc-900 text-slate-900 mb-6">
           {language === "ro" ? "Bine ai venit la ETHOS" : "Welcome to ETHOS"}
         </h1>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-red-100 bg-red-100 text-red-600 text-red-600 rounded-lg text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               {language === "ro" ? "Email" : "Email"}
             </label>
             <input
@@ -76,13 +76,13 @@ export default function AuthPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-zinc-300 border-slate-200 rounded-lg bg-white bg-slate-100 text-zinc-900 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               placeholder="email@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               {language === "ro" ? "Parolă" : "Password"}
             </label>
             <input
@@ -90,7 +90,7 @@ export default function AuthPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-zinc-300 border-slate-200 rounded-lg bg-white bg-slate-100 text-zinc-900 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               placeholder="••••••••"
             />
           </div>
@@ -113,21 +113,21 @@ export default function AuthPage() {
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full py-2 px-4 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-2 px-4 bg-white bg-slate-100 border border-zinc-300 border-slate-200 text-zinc-700 text-slate-600 font-medium rounded-lg hover:bg-zinc-50 hover:bg-slate-300 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <span>🔵</span>
             {language === "ro" ? "Continuă cu Google" : "Continue with Google"}
           </button>
         </div>
 
-        <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mt-6 text-center text-sm text-zinc-600 text-slate-500">
           {isLogin 
             ? (language === "ro" ? "Nu ai cont?" : "Don't have an account?")
             : (language === "ro" ? "Ai deja cont?" : "Already have an account?")
           }
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="ml-1 text-emerald-600 dark:text-emerald-400 hover:underline"
+            className="ml-1 text-emerald-600 text-emerald-600 hover:underline"
           >
             {isLogin 
               ? (language === "ro" ? "Creează unul" : "Sign Up")

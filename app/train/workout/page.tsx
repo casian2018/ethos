@@ -312,7 +312,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
       </div>
     );
@@ -322,10 +322,10 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
     <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Header */}
       <header className="mb-8">
-        <Link href="/train" className="text-zinc-500 dark:text-zinc-400 mb-2 inline-flex items-center gap-1">
+        <Link href="/train" className="text-zinc-500 text-slate-500 mb-2 inline-flex items-center gap-1">
           ← Back to Train
         </Link>
-        <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-white">
+        <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 text-slate-900">
           Workout Generator
         </h1>
       </header>
@@ -341,7 +341,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
               <div
                 key={s}
                 className={`w-3 h-3 rounded-full transition-colors ${
-                  isActive || isPast ? "bg-emerald-500" : "bg-zinc-200 dark:bg-zinc-700"
+                  isActive || isPast ? "bg-emerald-500" : "bg-zinc-200 bg-slate-100"
                 }`}
               />
             );
@@ -352,7 +352,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
       {/* Step 1: Workout Type Selection */}
       {step === "type" && (
         <div className="card p-6 animate-fade-in">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6 text-center">
+          <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-6 text-center">
             What type of workout?
           </h2>
           <div className="grid grid-cols-2 gap-4">
@@ -361,7 +361,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
               className="card-hover p-6 flex flex-col items-center gap-3 text-center"
             >
               <span className="text-4xl">🏋️</span>
-              <span className="font-medium text-zinc-900 dark:text-white">Gym</span>
+              <span className="font-medium text-zinc-900 text-slate-900">Gym</span>
               <span className="text-sm text-zinc-500">Weights & machines</span>
             </button>
             <button
@@ -369,7 +369,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
               className="card-hover p-6 flex flex-col items-center gap-3 text-center"
             >
               <span className="text-4xl">🏠</span>
-              <span className="font-medium text-zinc-900 dark:text-white">Home</span>
+              <span className="font-medium text-zinc-900 text-slate-900">Home</span>
               <span className="text-sm text-zinc-500">Bodyweight</span>
             </button>
             <button
@@ -377,7 +377,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
               className="card-hover p-6 flex flex-col items-center gap-3 text-center"
             >
               <span className="text-4xl">🏃</span>
-              <span className="font-medium text-zinc-900 dark:text-white">Cardio</span>
+              <span className="font-medium text-zinc-900 text-slate-900">Cardio</span>
               <span className="text-sm text-zinc-500">HIIT & endurance</span>
             </button>
             <button
@@ -385,7 +385,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
               className="card-hover p-6 flex flex-col items-center gap-3 text-center"
             >
               <span className="text-4xl">🧘</span>
-              <span className="font-medium text-zinc-900 dark:text-white">Stretching</span>
+              <span className="font-medium text-zinc-900 text-slate-900">Stretching</span>
               <span className="text-sm text-zinc-500">Mobility & recovery</span>
             </button>
           </div>
@@ -395,7 +395,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
       {/* Step 2: Intensity Selection */}
       {step === "intensity" && (
         <div className="card p-6 animate-fade-in">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6 text-center">
+          <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-6 text-center">
             What&apos;s your intensity level?
           </h2>
           <div className="space-y-3">
@@ -411,7 +411,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
               >
                 <span className="text-2xl">{option.emoji}</span>
                 <div>
-                  <span className="font-medium text-zinc-900 dark:text-white">{option.label}</span>
+                  <span className="font-medium text-zinc-900 text-slate-900">{option.label}</span>
                   <p className="text-sm text-zinc-500">{option.desc}</p>
                 </div>
               </button>
@@ -423,7 +423,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
       {/* Step 3: Duration Selection */}
       {step === "duration" && (
         <div className="card p-6 animate-fade-in">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6 text-center">
+          <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-6 text-center">
             How much time do you have?
           </h2>
           <div className="grid grid-cols-3 gap-3">
@@ -437,7 +437,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
               <button
                 key={option.value}
                 onClick={() => handleDurationSelect(option.value as Duration)}
-                className="card-hover p-4 text-center font-medium text-zinc-900 dark:text-white"
+                className="card-hover p-4 text-center font-medium text-zinc-900 text-slate-900"
               >
                 {option.label}
               </button>
@@ -450,10 +450,10 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
       {step === "generating" && (
         <div className="card p-12 text-center animate-fade-in">
           <div className="text-5xl mb-6 animate-bounce">✨</div>
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">
+          <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-2">
             Generating your personalized workout
           </h2>
-          <p className="text-zinc-500 dark:text-zinc-400">
+          <p className="text-zinc-500 text-slate-500">
             Creating a plan tailored to your profile...
           </p>
         </div>
@@ -465,7 +465,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
           {/* Workout Summary */}
           <div className="card p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+              <h2 className="text-lg font-semibold text-zinc-900 text-slate-900">
                 Your {workout.duration}-minute {workout.intensity} intensity {workout.type} workout
               </h2>
               <button
@@ -481,10 +481,10 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
               {workout.exercises.map((exercise, i) => (
                 <div
                   key={i}
-                  className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl"
+                  className="p-4 bg-zinc-50 bg-slate-50 rounded-xl"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-zinc-900 dark:text-white">
+                    <span className="font-medium text-zinc-900 text-slate-900">
                       {exercise.name}
                     </span>
                     <span className="text-sm text-zinc-500">
@@ -501,8 +501,8 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
                   )}
 
                   {exercise.tips && exercise.tips.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
-                      <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tips:</p>
+                    <div className="mt-3 pt-3 border-t border-zinc-200 border-slate-200">
+                      <p className="text-xs font-medium text-zinc-700 text-slate-600 mb-1">Tips:</p>
                       <ul className="text-xs text-zinc-500 space-y-1">
                         {exercise.tips.map((tip, j) => (
                           <li key={j}>• {tip}</li>
@@ -513,7 +513,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
 
                   {exercise.mistakes && exercise.mistakes.length > 0 && (
                     <div className="mt-2">
-                      <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Common mistakes:</p>
+                      <p className="text-xs font-medium text-red-600 text-red-600 mb-1">Common mistakes:</p>
                       <ul className="text-xs text-zinc-500">
                         {exercise.mistakes.map((mistake, j) => (
                           <li key={j}>• {mistake}</li>
@@ -546,7 +546,7 @@ Make exercises appropriate for the user's injuries: ${profile?.injuries?.join(",
 
           <button
             onClick={generateWorkout}
-            className="w-full mt-4 text-center text-emerald-600 dark:text-emerald-400 font-medium"
+            className="w-full mt-4 text-center text-emerald-600 text-emerald-600 font-medium"
           >
             Generate another workout →
           </button>

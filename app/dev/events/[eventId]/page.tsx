@@ -184,7 +184,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
       </div>
     );
@@ -192,7 +192,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
   if (!event) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white">
         <p className="text-zinc-500">Eveniment negăsit</p>
       </div>
     );
@@ -208,13 +208,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Header */}
       <header className="mb-6">
-        <Link href="/dev/events" className="text-zinc-500 dark:text-zinc-400 mb-2 inline-flex items-center gap-1">
+        <Link href="/dev/events" className="text-zinc-500 text-slate-500 mb-2 inline-flex items-center gap-1">
           ← Înapoi la Evenimente
         </Link>
         <div className="flex items-center gap-4">
           <span className="text-5xl">{sport?.emoji || "🏃"}</span>
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-zinc-900 text-slate-900">
               {sport?.label || event.sportType}
             </h1>
             <p className="text-zinc-500">{event.city}</p>
@@ -227,13 +227,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
         <div className="md:col-span-2 space-y-4">
           {/* Main Info Card */}
           <div className="card p-6">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+            <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4">
               Detalii Eveniment
             </h2>
             
             {/* Date & Time */}
             <div className="mb-4">
-              <div className="flex items-center gap-2 text-zinc-900 dark:text-white mb-1">
+              <div className="flex items-center gap-2 text-zinc-900 text-slate-900 mb-1">
                 <span>📅</span>
                 <span className="font-medium">{formatDate(event.startTime)}</span>
               </div>
@@ -245,7 +245,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
             {/* Location */}
             <div className="mb-4">
-              <div className="flex items-center gap-2 text-zinc-900 dark:text-white mb-1">
+              <div className="flex items-center gap-2 text-zinc-900 text-slate-900 mb-1">
                 <span>📍</span>
                 <span className="font-medium">{event.locationName}</span>
               </div>
@@ -276,22 +276,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
             {/* Description */}
             {event.description && (
-              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <p className="text-zinc-700 dark:text-zinc-300">{event.description}</p>
+              <div className="p-3 bg-zinc-50 bg-slate-50 rounded-lg">
+                <p className="text-zinc-700 text-slate-600">{event.description}</p>
               </div>
             )}
 
             {/* Organizer */}
-            <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+            <div className="mt-4 pt-4 border-t border-zinc-200 border-slate-200">
               <p className="text-sm text-zinc-500">
-                Organizator: <span className="text-zinc-900 dark:text-white font-medium">{event.creatorName}</span>
+                Organizator: <span className="text-zinc-900 text-slate-900 font-medium">{event.creatorName}</span>
               </p>
             </div>
           </div>
 
           {/* Participants */}
           <div className="card p-6">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+            <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4">
               Participanți ({event.joinedUsers.length}/{event.maxParticipants})
             </h2>
             
@@ -299,12 +299,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
               {event.joinedUsers.map((userId, index) => (
                 <div 
                   key={userId} 
-                  className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-2 rounded-lg"
+                  className="flex items-center gap-2 bg-zinc-100 bg-slate-50 px-3 py-2 rounded-lg"
                 >
                   <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-medium">
                     {index + 1}
                   </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <span className="text-sm text-zinc-700 text-slate-600">
                     {userId === event.creatorId ? "Organizator" : `Participant ${index + 1}`}
                   </span>
                 </div>
@@ -355,12 +355,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
           {/* Chat */}
           <div className="card p-4">
-            <h3 className="font-semibold text-zinc-900 dark:text-white mb-3">
+            <h3 className="font-semibold text-zinc-900 text-slate-900 mb-3">
               💬 Chat Grup
             </h3>
             
             {/* Messages */}
-            <div className="h-64 overflow-y-auto space-y-2 mb-3 p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+            <div className="h-64 overflow-y-auto space-y-2 mb-3 p-2 bg-zinc-50 bg-slate-50 rounded-lg">
               {messages.length === 0 ? (
                 <p className="text-sm text-zinc-500 text-center py-4">
                   Niciun mesaj încă. Fii primul!
@@ -373,19 +373,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                       key={msg.id} 
                       className={`p-2 rounded-lg ${
                         isOwnMessage 
-                          ? "bg-emerald-100 dark:bg-emerald-900/30 ml-8" 
-                          : "bg-zinc-100 dark:bg-zinc-700 mr-8"
+                          ? "bg-emerald-100 bg-emerald-100 ml-8" 
+                          : "bg-zinc-100 bg-slate-100 mr-8"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-xs font-medium text-zinc-900 dark:text-white">
+                        <span className="text-xs font-medium text-zinc-900 text-slate-900">
                           {msg.userName}
                         </span>
                         <span className="text-xs text-zinc-500">
                           {formatMessageTime(msg.createdAt)}
                         </span>
                       </div>
-                      <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                      <p className="text-sm text-zinc-700 text-slate-600">
                         {msg.message}
                       </p>
                     </div>

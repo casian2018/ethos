@@ -81,8 +81,8 @@ function ReplyComponent({
   const voteScore = (reply.likes?.length || 0) - (reply.dislikes?.length || 0);
 
   return (
-    <div className={`${depth > 0 ? "ml-8 border-l-2 border-zinc-100 dark:border-zinc-700 pl-4" : ""}`}>
-      <div className="bg-white dark:bg-zinc-800 rounded-xl p-4 mb-2 border border-zinc-100 dark:border-zinc-700">
+    <div className={`${depth > 0 ? "ml-8 border-l-2 border-zinc-100 border-slate-200 pl-4" : ""}`}>
+      <div className="bg-white bg-slate-50 rounded-xl p-4 mb-2 border border-zinc-100 border-slate-200">
         <div className="flex items-start gap-3">
           {/* Vote Section */}
           <div className="flex flex-col items-center gap-0.5">
@@ -122,16 +122,16 @@ function ReplyComponent({
           {/* Content */}
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-sm font-medium">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 bg-emerald-100 flex items-center justify-center text-emerald-700 text-emerald-700 text-sm font-medium">
                 {(userNames[reply.authorId] || reply.authorId).slice(0, 2).toUpperCase()}
               </div>
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{userNames[reply.authorId] || reply.authorId.slice(0, 8)}</span>
+              <span className="text-sm font-medium text-zinc-700 text-slate-600">{userNames[reply.authorId] || reply.authorId.slice(0, 8)}</span>
               <span className="text-xs text-zinc-400">{formatDate(reply.createdAt)}</span>
             </div>
-            <p className="text-zinc-700 dark:text-zinc-300">{reply.content}</p>
+            <p className="text-zinc-700 text-slate-600">{reply.content}</p>
             <button
               onClick={() => onReply(reply.id)}
-              className="mt-2 text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium"
+              className="mt-2 text-sm text-emerald-600 hover:text-emerald-700 text-emerald-600 font-medium"
             >
               {language === "ro" ? "Răspunde" : "Reply"}
             </button>
@@ -397,7 +397,7 @@ export default function ForumThreadPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-50 bg-white flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-emerald-600 border-t-transparent rounded-full" />
       </div>
     );
@@ -405,9 +405,9 @@ export default function ForumThreadPage() {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-50 bg-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-zinc-600 dark:text-zinc-400">Post not found</p>
+          <p className="text-zinc-600 text-slate-500">Post not found</p>
           <Link href="/forum" className="text-emerald-600 hover:underline mt-2 inline-block">
             Back to Forum
           </Link>
@@ -426,12 +426,12 @@ export default function ForumThreadPage() {
   const postVoteScore = (post.likes?.length || 0) - (post.dislikes?.length || 0);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 py-8 px-4">
+    <div className="min-h-screen bg-zinc-50 bg-white py-8 px-4">
       <div className="mx-auto max-w-3xl">
         {/* Back Button */}
         <Link 
           href="/forum" 
-          className="inline-flex items-center gap-2 text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-zinc-600 hover:text-emerald-600 text-slate-500 hover:text-emerald-600 mb-6 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -440,7 +440,7 @@ export default function ForumThreadPage() {
         </Link>
 
         {/* Post */}
-        <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-700 p-6 mb-6">
+        <div className="bg-white bg-slate-50 rounded-2xl shadow-sm border border-zinc-100 border-slate-200 p-6 mb-6">
           <div className="flex items-start gap-4">
             {/* Vote Section */}
             <div className="flex flex-col items-center gap-1">
@@ -449,8 +449,8 @@ export default function ForumThreadPage() {
                 disabled={votingPost}
                 className={`p-2 rounded-lg transition-colors ${
                   userPostVote === "like"
-                    ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30"
-                    : "text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                    ? "text-emerald-600 bg-emerald-50 bg-emerald-100"
+                    : "text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 hover:bg-emerald-50"
                 }`}
               >
                 <svg className="w-6 h-6" fill={userPostVote === "like" ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
@@ -467,8 +467,8 @@ export default function ForumThreadPage() {
                 disabled={votingPost}
                 className={`p-2 rounded-lg transition-colors ${
                   userPostVote === "dislike"
-                    ? "text-red-500 bg-red-50 dark:bg-red-900/30"
-                    : "text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    ? "text-red-500 bg-red-50 bg-red-100"
+                    : "text-zinc-400 hover:text-red-500 hover:bg-red-50 hover:bg-red-50"
                 }`}
               >
                 <svg className="w-6 h-6" fill={userPostVote === "dislike" ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
@@ -479,17 +479,17 @@ export default function ForumThreadPage() {
 
             {/* Content */}
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-4">{post.title}</h1>
+              <h1 className="text-2xl font-bold text-zinc-900 text-slate-900 mb-4">{post.title}</h1>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-emerald-700 dark:text-emerald-300 font-medium">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 bg-emerald-100 flex items-center justify-center text-emerald-700 text-emerald-700 font-medium">
                   {(userNames[post.authorId] || post.authorId).slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-medium text-zinc-900 dark:text-white">{userNames[post.authorId] || post.authorId.slice(0, 8)}</p>
+                  <p className="font-medium text-zinc-900 text-slate-900">{userNames[post.authorId] || post.authorId.slice(0, 8)}</p>
                   <p className="text-sm text-zinc-500">{formatDate(post.createdAt)}</p>
                 </div>
               </div>
-              <div className="prose max-w-none text-zinc-700 dark:text-zinc-300">
+              <div className="prose max-w-none text-zinc-700 text-slate-600">
                 {post.content}
               </div>
             </div>
@@ -498,13 +498,13 @@ export default function ForumThreadPage() {
 
         {/* Replies Section */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+          <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4">
             {language === "ro" ? "Comentarii" : "Replies"} ({replies.length})
           </h2>
           
           {topLevelReplies.length === 0 ? (
-            <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-100 dark:border-zinc-700 text-center">
-              <p className="text-zinc-500 dark:text-zinc-400">{language === "ro" ? "Încă nu există comentarii. Fii primul care răspunde!" : "No replies yet. Be the first to reply!"}</p>
+            <div className="bg-white bg-slate-50 rounded-xl p-6 border border-zinc-100 border-slate-200 text-center">
+              <p className="text-zinc-500 text-slate-500">{language === "ro" ? "Încă nu există comentarii. Fii primul care răspunde!" : "No replies yet. Be the first to reply!"}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -526,17 +526,17 @@ export default function ForumThreadPage() {
         </div>
 
         {/* Reply Form */}
-        <div id="reply-form" className="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-700 p-6">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+        <div id="reply-form" className="bg-white bg-slate-50 rounded-2xl shadow-sm border border-zinc-100 border-slate-200 p-6">
+          <h3 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4">
             {replyingTo ? (language === "ro" ? "Răspunde la comentariu" : "Reply to comment") : (language === "ro" ? "Adaugă un răspuns" : "Add a reply")}
           </h3>
           
           {replyingTo && (
-            <div className="mb-3 p-2 bg-zinc-50 dark:bg-zinc-700 rounded-lg flex items-center justify-between">
-              <span className="text-sm text-zinc-600 dark:text-zinc-300">{language === "ro" ? "Răspunzi la un comentariu" : "Replying to comment"}</span>
+            <div className="mb-3 p-2 bg-zinc-50 bg-slate-100 rounded-lg flex items-center justify-between">
+              <span className="text-sm text-zinc-600 text-slate-600">{language === "ro" ? "Răspunzi la un comentariu" : "Replying to comment"}</span>
               <button
                 onClick={() => setReplyingTo(null)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                className="text-zinc-400 hover:text-zinc-600 hover:text-slate-700"
               >
                 ×
               </button>
@@ -550,14 +550,14 @@ export default function ForumThreadPage() {
               placeholder={language === "ro" ? "Scrie răspunsul tău..." : "Write your reply..."}
               required
               rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-800 outline-none transition-all resize-none mb-3"
+              className="w-full px-4 py-3 rounded-xl border border-zinc-200 border-slate-200 bg-white bg-slate-100 text-zinc-900 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:ring-emerald-300 outline-none transition-all resize-none mb-3"
             />
             <div className="flex gap-3">
               {replyingTo && (
                 <button
                   type="button"
                   onClick={() => setReplyingTo(null)}
-                  className="px-4 py-2 bg-zinc-100 dark:bg-zinc-600 text-zinc-700 dark:text-zinc-200 rounded-lg font-medium hover:bg-zinc-200 dark:hover:bg-zinc-500 transition-colors"
+                  className="px-4 py-2 bg-zinc-100 bg-slate-200 text-zinc-700 text-slate-700 rounded-lg font-medium hover:bg-zinc-200 hover:bg-slate-300 transition-colors"
                 >
                   {language === "ro" ? "Anulează" : "Cancel"}
                 </button>

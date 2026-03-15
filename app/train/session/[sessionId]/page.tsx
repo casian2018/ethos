@@ -233,7 +233,7 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
       </div>
     );
@@ -241,7 +241,7 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
 
   if (!session || exercises.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white">
         <p className="text-zinc-500">Loading workout...</p>
       </div>
     );
@@ -255,10 +255,10 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
     <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Header */}
       <header className="mb-6">
-        <Link href="/train" className="text-zinc-500 dark:text-zinc-400 mb-2 inline-flex items-center gap-1">
+        <Link href="/train" className="text-zinc-500 text-slate-500 mb-2 inline-flex items-center gap-1">
           ← Exit Workout
         </Link>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-zinc-900 text-slate-900">
           {session.workoutName}
         </h1>
         <p className="text-zinc-500">
@@ -282,8 +282,8 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
                 isActive 
                   ? "bg-emerald-500 text-white" 
                   : isComplete 
-                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
-                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                    ? "bg-emerald-100 bg-emerald-100 text-emerald-600 text-emerald-600"
+                    : "bg-zinc-100 bg-slate-50 text-zinc-500"
               }`}
             >
               {isComplete ? "✓" : i + 1}
@@ -296,10 +296,10 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
       {showRestTimer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="card p-8 text-center max-w-sm">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4">
               Rest Time
             </h3>
-            <p className="text-5xl font-bold text-emerald-600 dark:text-emerald-400 mb-6">
+            <p className="text-5xl font-bold text-emerald-600 text-emerald-600 mb-6">
               {timer}s
             </p>
             <div className="flex gap-2 justify-center mb-4">
@@ -310,7 +310,7 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
                   className={`px-3 py-1 rounded-lg text-sm ${
                     restTime === time 
                       ? "bg-emerald-500 text-white" 
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600"
+                      : "bg-zinc-100 bg-slate-50 text-zinc-600"
                   }`}
                 >
                   {time}s
@@ -329,7 +329,7 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
         <div className="card p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">
+              <h2 className="text-xl font-semibold text-zinc-900 text-slate-900">
                 {currentExerciseData.exerciseName}
               </h2>
               <span className="badge badge-primary">
@@ -338,7 +338,7 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
             </div>
             <div className="text-right">
               <p className="text-sm text-zinc-500">Target</p>
-              <p className="font-semibold text-zinc-900 dark:text-white">
+              <p className="font-semibold text-zinc-900 text-slate-900">
                 {targetSets} × {currentExerciseData.targetReps}
               </p>
             </div>
@@ -347,11 +347,11 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
           {/* Completed Sets */}
           <div className="space-y-2 mb-6">
             {currentSets.map((set, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              <div key={i} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
+                <span className="text-sm font-medium text-zinc-600 text-slate-500">
                   Set {set.setNumber}
                 </span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="font-semibold text-emerald-600 text-emerald-600">
                   {set.weight}kg × {set.reps}
                 </span>
               </div>
@@ -360,7 +360,7 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
 
           {/* Log New Set */}
           {currentSets.length < targetSets && (
-            <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4">
+            <div className="border-t border-zinc-200 border-slate-200 pt-4">
               <p className="text-sm text-zinc-500 mb-3">
                 Log set {currentSets.length + 1}
               </p>
@@ -395,8 +395,8 @@ export default function WorkoutSessionPage({ params }: { params: Promise<{ sessi
           )}
 
           {currentSets.length >= targetSets && (
-            <div className="mt-4 p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-center">
-              <p className="text-emerald-700 dark:text-emerald-300 font-medium">
+            <div className="mt-4 p-3 bg-emerald-100 bg-emerald-100 rounded-lg text-center">
+              <p className="text-emerald-700 text-emerald-700 font-medium">
                 ✓ Exercise Complete!
               </p>
             </div>

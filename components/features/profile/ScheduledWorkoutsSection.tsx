@@ -150,8 +150,8 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
   if (loading) {
     return (
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4 flex items-center gap-2">
+          <svg className="w-5 h-5 text-emerald-600 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           Antrenamente Programate
@@ -166,14 +166,14 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
   if (slots.length === 0) {
     return (
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4 flex items-center gap-2">
+          <svg className="w-5 h-5 text-emerald-600 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           Antrenamente Programate
         </h2>
-        <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-center">
-          <p className="text-zinc-500 dark:text-zinc-400">
+        <div className="p-4 bg-zinc-50 bg-white rounded-xl text-center">
+          <p className="text-zinc-500 text-slate-500">
             Nu ai niciun antrenament programat.
           </p>
           <Link 
@@ -189,8 +189,8 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-        <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-emerald-600 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
         Antrenamente Programate
@@ -208,18 +208,18 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
             return (
               <div 
                 key={slot.id}
-                className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl"
+                className="p-4 bg-zinc-50 bg-white rounded-xl"
               >
                 <div className="flex items-start gap-3">
                   {/* Sport Icon */}
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xl flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 bg-emerald-100 flex items-center justify-center text-xl flex-shrink-0">
                     {sport?.emoji || "🏃"}
                   </div>
                   
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-zinc-900 dark:text-white">
+                      <h3 className="font-semibold text-zinc-900 text-slate-900">
                         {sport?.label || slot.sportType}
                       </h3>
                       <span className={`badge text-xs ${
@@ -242,7 +242,7 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
                     </p>
                     
                     {/* Partner Info */}
-                    <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                    <div className="mt-2 pt-2 border-t border-zinc-200 border-slate-200">
                       {slot.status === "matched" && slot.partnerName ? (
                         <div className="flex items-center justify-between">
                           <p className="text-sm">
@@ -255,7 +255,7 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
                                 {slot.partnerName}
                               </Link>
                             ) : (
-                              <span className="font-medium text-zinc-900 dark:text-white">
+                              <span className="font-medium text-zinc-900 text-slate-900">
                                 {slot.partnerName}
                               </span>
                             )}
@@ -265,13 +265,13 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
                               setChatSlot(slot);
                               setShowChat(true);
                             }}
-                            className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50"
+                            className="text-xs bg-emerald-100 bg-emerald-100 text-emerald-700 text-emerald-600 px-3 py-1 rounded-lg hover:bg-emerald-200 hover:bg-emerald-200"
                           >
                             💬 Chat
                           </button>
                         </div>
                       ) : (
-                        <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+                        <p className="text-sm text-yellow-600 text-yellow-600 font-medium">
                           🔍 Se caută partener...
                         </p>
                       )}
@@ -287,7 +287,7 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
       {/* Past Slots */}
       {pastSlots.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3">
+          <h3 className="text-sm font-medium text-zinc-500 text-slate-500 mb-3">
             Antrenamente trecute ({pastSlots.length})
           </h3>
           <div className="space-y-2 opacity-60">
@@ -297,11 +297,11 @@ export default function ScheduledWorkoutsSection({ userId }: ScheduledWorkoutsSe
               return (
                 <div 
                   key={slot.id}
-                  className="p-3 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl flex items-center gap-3"
+                  className="p-3 bg-zinc-100 bg-white/50 rounded-xl flex items-center gap-3"
                 >
                   <span className="text-lg">{sport?.emoji || "🏃"}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-zinc-700 dark:text-zinc-300 text-sm">
+                    <p className="font-medium text-zinc-700 text-slate-600 text-sm">
                       {sport?.label || slot.sportType}
                     </p>
                     <p className="text-xs text-zinc-500">

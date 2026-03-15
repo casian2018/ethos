@@ -233,7 +233,7 @@ export default function SportEventsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
       </div>
     );
@@ -244,7 +244,7 @@ export default function SportEventsPage() {
       {/* Header */}
       <header className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-zinc-900 text-slate-900">
             {language === "ro" ? "Evenimente Sportive" : "Sport Events"}
           </h1>
           <p className="text-zinc-500">
@@ -265,7 +265,7 @@ export default function SportEventsPage() {
       <div className="card p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               {language === "ro" ? "Oraș" : "City"}
             </label>
             <select
@@ -281,7 +281,7 @@ export default function SportEventsPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               {language === "ro" ? "Sport" : "Sport"}
             </label>
             <select
@@ -297,7 +297,7 @@ export default function SportEventsPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               {language === "ro" ? "Dată" : "Date"}
             </label>
             <input
@@ -328,7 +328,7 @@ export default function SportEventsPage() {
       {filteredEvents.length === 0 ? (
         <div className="card p-8 text-center">
           <div className="text-4xl mb-4">🏆</div>
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
+          <h3 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-2">
             {language === "ro" ? "Niciun eveniment găsit" : "No events found"}
           </h3>
           <p className="text-zinc-500 mb-4">
@@ -357,7 +357,7 @@ export default function SportEventsPage() {
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">{sport?.emoji || "🏃"}</span>
                     <div>
-                      <h3 className="font-semibold text-zinc-900 dark:text-white">
+                      <h3 className="font-semibold text-zinc-900 text-slate-900">
                         {sport?.label || event.sportType}
                       </h3>
                       <p className="text-sm text-zinc-500">
@@ -377,8 +377,8 @@ export default function SportEventsPage() {
                 </div>
 
                 {/* Date & Time */}
-                <div className="mb-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                  <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                <div className="mb-3 p-3 bg-zinc-50 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-zinc-900 text-slate-900">
                     <span className="text-lg">📅</span>
                     <span className="font-medium">{formatDate(event.startTime)}</span>
                   </div>
@@ -390,7 +390,7 @@ export default function SportEventsPage() {
 
                 {/* Location */}
                 <div className="mb-3">
-                  <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                  <div className="flex items-center gap-2 text-zinc-900 text-slate-900">
                     <span>📍</span>
                     <span className="font-medium">{event.locationName}</span>
                   </div>
@@ -419,7 +419,7 @@ export default function SportEventsPage() {
                       {event.joinedUsers.length} / {event.maxParticipants}
                     </span>
                   </div>
-                  <div className="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                  <div className="h-2 bg-zinc-200 bg-slate-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${isFull ? "bg-red-500" : "bg-emerald-500"}`}
                       style={{ width: `${(event.joinedUsers.length / event.maxParticipants) * 100}%` }}
@@ -439,7 +439,7 @@ export default function SportEventsPage() {
 
                 {/* Creator */}
                 <div className="text-sm text-zinc-500 mb-4">
-                  {language === "ro" ? "Organizator" : "Organizer"}: <span className="text-zinc-700 dark:text-zinc-300">{event.creatorName}</span>
+                  {language === "ro" ? "Organizator" : "Organizer"}: <span className="text-zinc-700 text-slate-600">{event.creatorName}</span>
                 </div>
 
                 {/* Actions */}
@@ -542,7 +542,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="card p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+          <h2 className="text-xl font-bold text-zinc-900 text-slate-900">
             {language === "ro" ? "Creează Eveniment" : "Create Event"}
           </h2>
           <button onClick={onClose} className="text-zinc-500 text-2xl">×</button>
@@ -551,7 +551,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Sport Type */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               Sport *
             </label>
             <select
@@ -569,7 +569,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
 
           {/* City */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               Oraș *
             </label>
             <select
@@ -587,7 +587,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
 
           {/* Gender Preference */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               Preferință Gen
             </label>
             <select
@@ -604,7 +604,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
           {/* Date & Time */}
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
                 Dată *
               </label>
               <input
@@ -617,7 +617,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
                 Ora Start *
               </label>
               <input
@@ -629,7 +629,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
                 Ora Final *
               </label>
               <input
@@ -644,7 +644,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               Locație *
             </label>
             <input
@@ -667,13 +667,13 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
                 onChange={(e) => setFormData({ ...formData, isPaid: e.target.checked })}
                 className="w-5 h-5 rounded"
               />
-              <label htmlFor="isPaid" className="text-sm text-zinc-700 dark:text-zinc-300">
+              <label htmlFor="isPaid" className="text-sm text-zinc-700 text-slate-600">
                 Eveniment Plătit
               </label>
             </div>
             {formData.isPaid && (
               <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
                   Preț (RON)
                 </label>
                 <input
@@ -689,7 +689,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
 
           {/* Max Participants */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               Nr. Maxim Participanți *
             </label>
             <input
@@ -705,7 +705,7 @@ function CreateEventModal({ onClose, userId, userName }: CreateEventModalProps) 
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               Descriere (opțional)
             </label>
             <textarea

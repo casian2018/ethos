@@ -241,38 +241,98 @@ If you cannot determine any stat, use 0 for numbers.`;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-50 bg-white flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 transition-colors">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Import Health Stats</h1>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1">Upload a screenshot from Apple Health or Samsung Health</p>
+          <h1 className="text-3xl font-bold text-slate-900">Import Health Stats</h1>
+          <p className="text-slate-500 mt-1">Upload a screenshot from Apple Health or Samsung Health</p>
+        </div>
+
+        {/* How-to-Sync Tutorial */}
+        <div className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <span>📱</span> How to Sync Your Data
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Apple Health */}
+            <div className="bg-white rounded-xl p-4 border border-blue-200">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">🍎</span>
+                <h3 className="font-semibold text-slate-900">Apple Health</h3>
+              </div>
+              <ol className="text-sm text-slate-600 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 font-bold">1.</span>
+                  Open the <strong>Health</strong> app on iPhone
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 font-bold">2.</span>
+                  Tap your <strong>profile picture</strong> (top right)
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 font-bold">3.</span>
+                  Scroll down and tap <strong>Export All Health Data</strong>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 font-bold">4.</span>
+                  Take a <strong>screenshot</strong> of your activity summary
+                </li>
+              </ol>
+            </div>
+
+            {/* Samsung Health */}
+            <div className="bg-white rounded-xl p-4 border border-green-200">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">📱</span>
+                <h3 className="font-semibold text-slate-900">Samsung Health</h3>
+              </div>
+              <ol className="text-sm text-slate-600 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-green-500 font-bold">1.</span>
+                  Open <strong>Samsung Health</strong> app
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-500 font-bold">2.</span>
+                  Go to <strong>Today</strong> tab
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-500 font-bold">3.</span>
+                  Take a <strong>screenshot</strong> showing your steps & calories
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-500 font-bold">4.</span>
+                  Upload the screenshot below
+                </li>
+              </ol>
+            </div>
+          </div>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
-            <p className="text-red-600 dark:text-red-400">{error}</p>
+          <div className="mb-6 p-4 rounded-lg bg-red-50 bg-red-50 border border-red-100 border-red-200">
+            <p className="text-red-600 text-red-600">{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
-            <p className="text-emerald-600 dark:text-emerald-400">{success}</p>
+          <div className="mb-6 p-4 rounded-lg bg-emerald-50 bg-emerald-50 border border-emerald-100 border-emerald-200">
+            <p className="text-emerald-600 text-emerald-600">{success}</p>
           </div>
         )}
 
-        <div className="card p-6 mb-8 dark:bg-zinc-900">
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Upload Screenshot</h2>
+        <div className="card p-6 mb-8 bg-white">
+          <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Upload Screenshot</h2>
           
           <div 
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-8 text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors"
+            className="border-2 border-dashed border-zinc-300 border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 hover:bg-emerald-50 transition-colors"
           >
             {previewUrl ? (
               <div className="relative">
@@ -291,12 +351,12 @@ If you cannot determine any stat, use 0 for numbers.`;
               </div>
             ) : (
               <>
-                <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-full bg-zinc-100 bg-slate-50 flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <p className="text-zinc-600 dark:text-zinc-300 mb-2">Click to upload or drag and drop</p>
+                <p className="text-zinc-600 text-slate-600 mb-2">Click to upload or drag and drop</p>
                 <p className="text-sm text-zinc-400">PNG, JPG up to 5MB</p>
               </>
             )}
@@ -316,30 +376,30 @@ If you cannot determine any stat, use 0 for numbers.`;
         </div>
 
         {extractedStats && (
-          <div className="card p-6 mb-8 dark:bg-zinc-900">
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Extracted Stats Preview</h2>
+          <div className="card p-6 mb-8 bg-white">
+            <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Extracted Stats Preview</h2>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                <p className="text-sm text-emerald-600 dark:text-emerald-400">Steps</p>
-                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{extractedStats.steps.toLocaleString()}</p>
+              <div className="p-4 bg-emerald-50 bg-emerald-50 rounded-xl">
+                <p className="text-sm text-emerald-600 text-emerald-600">Steps</p>
+                <p className="text-2xl font-bold text-emerald-700 text-emerald-700">{extractedStats.steps.toLocaleString()}</p>
               </div>
-              <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
-                <p className="text-sm text-orange-600 dark:text-orange-400">Calories</p>
-                <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{extractedStats.calories.toLocaleString()}</p>
+              <div className="p-4 bg-orange-50 bg-orange-50 rounded-xl">
+                <p className="text-sm text-orange-600 text-orange-600">Calories</p>
+                <p className="text-2xl font-bold text-orange-700 text-orange-700">{extractedStats.calories.toLocaleString()}</p>
               </div>
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                <p className="text-sm text-blue-600 dark:text-blue-400">Distance</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{extractedStats.distance} km</p>
+              <div className="p-4 bg-blue-50 bg-blue-50 rounded-xl">
+                <p className="text-sm text-blue-600 text-blue-600">Distance</p>
+                <p className="text-2xl font-bold text-blue-700 text-blue-700">{extractedStats.distance} km</p>
               </div>
-              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
-                <p className="text-sm text-purple-600 dark:text-purple-400">Active Minutes</p>
-                <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{extractedStats.activeMinutes} min</p>
+              <div className="p-4 bg-purple-50 bg-purple-50 rounded-xl">
+                <p className="text-sm text-purple-600 text-purple-600">Active Minutes</p>
+                <p className="text-2xl font-bold text-purple-700 text-purple-700">{extractedStats.activeMinutes} min</p>
               </div>
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => { setExtractedStats(null); setSelectedFile(null); setPreviewUrl(null); }} className="btn-secondary flex-1 dark:bg-zinc-800 dark:text-zinc-200">Cancel</button>
+              <button onClick={() => { setExtractedStats(null); setSelectedFile(null); setPreviewUrl(null); }} className="btn-secondary flex-1 bg-slate-50 text-slate-700">Cancel</button>
               <button onClick={saveStats} disabled={loading} className="btn-primary flex-1 flex items-center justify-center gap-2">
                 {loading ? <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> : <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></>}
                 Save Stats
@@ -349,27 +409,27 @@ If you cannot determine any stat, use 0 for numbers.`;
         )}
 
         <div>
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Import History</h2>
+          <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Import History</h2>
           {savedStats.length === 0 ? (
-            <div className="card p-6 text-center dark:bg-zinc-900"><p className="text-zinc-500 dark:text-zinc-400">No imported stats yet</p></div>
+            <div className="card p-6 text-center bg-white"><p className="text-zinc-500 text-slate-500">No imported stats yet</p></div>
           ) : (
             <div className="space-y-3">
               {savedStats.map((stat) => (
-                <div key={stat.id} className="card p-4 dark:bg-zinc-900">
+                <div key={stat.id} className="card p-4 bg-white">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                        <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 bg-emerald-100 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-emerald-600 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       </div>
-                      <div><p className="font-medium text-zinc-900 dark:text-white">{stat.date}</p><p className="text-sm text-zinc-500 dark:text-zinc-400">{stat.source}</p></div>
+                      <div><p className="font-medium text-zinc-900 text-slate-900">{stat.date}</p><p className="text-sm text-zinc-500 text-slate-500">{stat.source}</p></div>
                     </div>
                     <p className="text-sm text-zinc-400">{formatDate(stat.createdAt)}</p>
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center">
-                    <div><p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{stat.steps.toLocaleString()}</p><p className="text-xs text-zinc-500">steps</p></div>
-                    <div><p className="text-lg font-semibold text-orange-600 dark:text-orange-400">{stat.calories}</p><p className="text-xs text-zinc-500">kcal</p></div>
-                    <div><p className="text-lg font-semibold text-blue-600 dark:text-blue-400">{stat.distance}</p><p className="text-xs text-zinc-500">km</p></div>
-                    <div><p className="text-lg font-semibold text-purple-600 dark:text-purple-400">{stat.activeMinutes}</p><p className="text-xs text-zinc-500">min</p></div>
+                    <div><p className="text-lg font-semibold text-emerald-600 text-emerald-600">{stat.steps.toLocaleString()}</p><p className="text-xs text-zinc-500">steps</p></div>
+                    <div><p className="text-lg font-semibold text-orange-600 text-orange-600">{stat.calories}</p><p className="text-xs text-zinc-500">kcal</p></div>
+                    <div><p className="text-lg font-semibold text-blue-600 text-blue-600">{stat.distance}</p><p className="text-xs text-zinc-500">km</p></div>
+                    <div><p className="text-lg font-semibold text-purple-600 text-purple-600">{stat.activeMinutes}</p><p className="text-xs text-zinc-500">min</p></div>
                   </div>
                 </div>
               ))}
@@ -383,7 +443,7 @@ If you cannot determine any stat, use 0 for numbers.`;
 
 export default function HealthStatsImportPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-zinc-50 bg-white flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
       <HealthStatsContent />
     </Suspense>
   );

@@ -341,7 +341,7 @@ export default function CompetitionDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-50 bg-white flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -349,7 +349,7 @@ export default function CompetitionDetailPage() {
 
   if (!competition) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-50 bg-white flex items-center justify-center">
         <p className="text-zinc-500">Competition not found</p>
       </div>
     );
@@ -359,12 +359,12 @@ export default function CompetitionDetailPage() {
   const daysRemaining = Math.max(0, Math.ceil((competition.endDate.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 transition-colors">
+    <div className="min-h-screen bg-zinc-50 bg-white transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button
           onClick={() => router.push("/competition")}
-          className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-6"
+          className="flex items-center gap-2 text-zinc-600 text-slate-500 hover:text-zinc-900 hover:text-slate-900 mb-6"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -373,14 +373,14 @@ export default function CompetitionDetailPage() {
         </button>
 
         {/* Competition Header */}
-        <div className="card p-6 mb-6 dark:bg-zinc-800">
+        <div className="card p-6 mb-6 bg-slate-50">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{competition.name}</h1>
+              <h1 className="text-2xl font-bold text-zinc-900 text-slate-900">{competition.name}</h1>
               {competition.description && (
-                <p className="text-zinc-500 dark:text-zinc-400 mt-2">{competition.description}</p>
+                <p className="text-zinc-500 text-slate-500 mt-2">{competition.description}</p>
               )}
-              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-zinc-500 text-slate-500">
                 <span className="flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -406,7 +406,7 @@ export default function CompetitionDetailPage() {
               <button
                 onClick={quitCompetition}
                 disabled={quitting}
-                className="btn-secondary text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="btn-secondary text-red-600 text-red-600 hover:bg-red-50 hover:bg-red-50"
               >
                 {quitting ? "Quitting..." : "Quit Competition"}
               </button>
@@ -425,36 +425,36 @@ export default function CompetitionDetailPage() {
         {/* Message */}
         {message && (
           <div className={`mb-6 p-4 rounded-lg ${
-            message.type === "success" ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800" :
-            message.type === "error" ? "bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800" :
-            "bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800"
+            message.type === "success" ? "bg-emerald-50 bg-emerald-50 border border-emerald-100 border-emerald-200" :
+            message.type === "error" ? "bg-red-50 bg-red-50 border border-red-100 border-red-200" :
+            "bg-blue-50 bg-blue-50 border border-blue-100 border-blue-200"
           }`}>
-            <p className={message.type === "success" ? "text-emerald-600 dark:text-emerald-400" :
-              message.type === "error" ? "text-red-600 dark:text-red-400" :
-              "text-blue-600 dark:text-blue-400"}>{message.text}</p>
+            <p className={message.type === "success" ? "text-emerald-600 text-emerald-600" :
+              message.type === "error" ? "text-red-600 text-red-600" :
+              "text-blue-600 text-blue-600"}>{message.text}</p>
           </div>
         )}
 
         {isParticipant && (
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Submit Yesterday&apos;s Steps */}
-            <div className="card p-6 dark:bg-zinc-800">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+            <div className="card p-6 bg-slate-50">
+              <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4">
                 Submit Yesterday&apos;s Steps
               </h2>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+              <p className="text-sm text-zinc-500 text-slate-500 mb-4">
                 Upload a screenshot from Samsung Health or Apple Health showing your steps for {getYesterdayDate()}
               </p>
               
               {alreadySubmitted ? (
                 <div className="text-center py-6">
-                  <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full mx-auto mb-3 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-16 h-16 bg-emerald-100 bg-emerald-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-emerald-600 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-emerald-600 dark:text-emerald-400 font-medium">Already submitted for yesterday!</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                  <p className="text-emerald-600 text-emerald-600 font-medium">Already submitted for yesterday!</p>
+                  <p className="text-sm text-zinc-500 text-slate-500 mt-1">
                     {userEntry?.steps?.toLocaleString()} steps
                   </p>
                 </div>
@@ -472,20 +472,20 @@ export default function CompetitionDetailPage() {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="w-full p-6 border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-400 transition-colors"
+                      className="w-full p-6 border-2 border-dashed border-zinc-300 border-slate-200 rounded-xl hover:border-emerald-500 hover:border-emerald-500 transition-colors"
                     >
                       <div className="text-center">
                         {uploading ? (
                           <>
                             <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                            <p className="text-zinc-500 dark:text-zinc-400">Analyzing image...</p>
+                            <p className="text-zinc-500 text-slate-500">Analyzing image...</p>
                           </>
                         ) : (
                           <>
                             <svg className="w-10 h-10 text-zinc-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <p className="text-zinc-500 dark:text-zinc-400">Tap to upload screenshot</p>
+                            <p className="text-zinc-500 text-slate-500">Tap to upload screenshot</p>
                           </>
                         )}
                       </div>
@@ -511,14 +511,14 @@ export default function CompetitionDetailPage() {
                       </div>
                       
                       {detectedData && (
-                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                          <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-2">Detected:</p>
+                        <div className="p-4 bg-emerald-50 bg-emerald-50 rounded-lg">
+                          <p className="text-sm font-medium text-emerald-600 text-emerald-600 mb-2">Detected:</p>
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                              <p className="text-2xl font-bold text-zinc-900 text-slate-900">
                                 {detectedData.steps.toLocaleString()} steps
                               </p>
-                              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                              <p className="text-sm text-zinc-500 text-slate-500">
                                 {detectedData.date}
                               </p>
                             </div>
@@ -547,8 +547,8 @@ export default function CompetitionDetailPage() {
             </div>
 
             {/* Leaderboard */}
-            <div className="card p-6 dark:bg-zinc-800">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+            <div className="card p-6 bg-slate-50">
+              <h2 className="text-lg font-semibold text-zinc-900 text-slate-900 mb-4">
                 Leaderboard
               </h2>
               
@@ -560,7 +560,7 @@ export default function CompetitionDetailPage() {
               )}
               
               {leaderboard.length === 0 ? (
-                <p className="text-zinc-500 dark:text-zinc-400 text-center py-8">
+                <p className="text-zinc-500 text-slate-500 text-center py-8">
                   No entries yet. Be the first to submit!
                 </p>
               ) : (
@@ -573,8 +573,8 @@ export default function CompetitionDetailPage() {
                         key={entry.userId}
                         className={`flex items-center gap-3 p-3 rounded-xl ${
                           isCurrentUser 
-                            ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800"
-                            : "bg-zinc-50 dark:bg-zinc-700"
+                            ? "bg-emerald-50 bg-emerald-50 border border-emerald-200 border-emerald-200"
+                            : "bg-zinc-50 bg-slate-100"
                         }`}
                       >
                         {/* Rank */}
@@ -582,7 +582,7 @@ export default function CompetitionDetailPage() {
                           entry.rank === 1 ? "bg-yellow-400 text-yellow-900" :
                           entry.rank === 2 ? "bg-zinc-300 text-zinc-700" :
                           entry.rank === 3 ? "bg-amber-600 text-white" :
-                          "bg-zinc-200 dark:bg-zinc-600 text-zinc-600 dark:text-zinc-300"
+                          "bg-zinc-200 bg-slate-200 text-zinc-600 text-slate-600"
                         }`}>
                           {entry.rank <= 3 ? (
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -594,22 +594,22 @@ export default function CompetitionDetailPage() {
                         {/* User Info */}
                         <div className="flex-1 min-w-0">
                           <p className={`font-medium truncate ${
-                            isCurrentUser ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-900 dark:text-white"
+                            isCurrentUser ? "text-emerald-600 text-emerald-600" : "text-zinc-900 text-slate-900"
                           }`}>
                             {entry.userName}
                             {isCurrentUser && <span className="text-zinc-400 text-sm ml-1">(You)</span>}
                           </p>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          <p className="text-xs text-zinc-500 text-slate-500">
                             {entry.dailyAverage.toLocaleString()} avg/day · {entry.entries} entries
                           </p>
                         </div>
                         
                         {/* Steps */}
                         <div className="text-right">
-                          <p className="font-bold text-zinc-900 dark:text-white">
+                          <p className="font-bold text-zinc-900 text-slate-900">
                             {entry.totalSteps.toLocaleString()}
                           </p>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400">steps</p>
+                          <p className="text-xs text-zinc-500 text-slate-500">steps</p>
                         </div>
                       </div>
                     );
@@ -621,16 +621,16 @@ export default function CompetitionDetailPage() {
         )}
 
         {!isParticipant && (
-          <div className="card p-8 text-center dark:bg-zinc-800">
-            <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-700 rounded-full mx-auto mb-4 flex items-center justify-center">
+          <div className="card p-8 text-center bg-slate-50">
+            <div className="w-20 h-20 bg-zinc-100 bg-slate-100 rounded-full mx-auto mb-4 flex items-center justify-center">
               <svg className="w-10 h-10 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-2">
+            <h3 className="text-lg font-medium text-zinc-900 text-slate-900 mb-2">
               Join to See Details
             </h3>
-            <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+            <p className="text-zinc-500 text-slate-500 mb-4">
               Join this competition to track your progress and see the leaderboard
             </p>
             <button

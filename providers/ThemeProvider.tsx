@@ -2,15 +2,12 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 
-type Theme = "light" | "dark" | "system";
+type Theme = "light";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
-  attribute?: string;
-  enableSystem?: boolean;
-  disableTransitionOnChange?: boolean;
 };
 
 type ThemeProviderState = {
@@ -24,12 +21,8 @@ const ThemeProviderContext = createContext<ThemeProviderState | undefined>(
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
-  storageKey = "vite-ui-theme",
-  attribute = "class",
-  enableSystem = true,
-  disableTransitionOnChange = false,
-  ...props
+  defaultTheme = "light",
+  storageKey = "ethos-theme",
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
@@ -38,20 +31,12 @@ export function ThemeProvider({
   useEffect(() => {
     const root = window.document.documentElement;
 
-    root.classList.remove("light", "dark");
+    // Always force light mode - remove dark class
+    root.classList.remove("dark");
+    root.classList.add("light");
 
-    if (theme === "system" && enableSystem) {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
-  }, [theme, enableSystem]);
+    localStorage.setItem(storageKey, theme);
+  }, [theme, storageKey]);
 
   const value = {
     theme,
@@ -62,7 +47,7 @@ export function ThemeProvider({
   };
 
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <ThemeProviderContext.Provider value={value}>
       {children}
     </ThemeProviderContext.Provider>
   );

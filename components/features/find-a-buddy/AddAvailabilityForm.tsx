@@ -216,13 +216,13 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
   return (
     <div className="card p-6 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+        <h2 className="text-xl font-bold text-zinc-900 text-slate-900">
           ➕ Creează Slot Available
         </h2>
         {onCancel && (
           <button 
             onClick={onCancel}
-            className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+            className="text-zinc-500 hover:text-zinc-700 hover:text-slate-600"
           >
             ✕
           </button>
@@ -232,14 +232,14 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Error message */}
         {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+          <div className="p-3 bg-red-50 bg-red-50 border border-red-200 border-red-200 rounded-lg text-red-600 text-red-600 text-sm">
             {error}
           </div>
         )}
 
         {/* Sport Type */}
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
             Sport *
           </label>
           <select
@@ -259,7 +259,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
 
         {/* City */}
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
             Oraș *
           </label>
           <select
@@ -278,7 +278,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
         {/* Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
               Data *
             </label>
             <input
@@ -291,7 +291,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
               Ora *
             </label>
             <input
@@ -306,7 +306,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
 
         {/* Duration */}
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
             Durată
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -318,7 +318,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
                 className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
                   duration === opt.value
                     ? "bg-emerald-500 text-white"
-                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    : "bg-zinc-100 bg-white text-zinc-600 text-slate-500 hover:bg-zinc-200 hover:bg-slate-200"
                 }`}
               >
                 {opt.label}
@@ -329,7 +329,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
 
         {/* Gender Preference */}
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
             Preferință gen
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -341,7 +341,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
                 className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
                   genderPreference === pref
                     ? "bg-emerald-500 text-white"
-                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    : "bg-zinc-100 bg-white text-zinc-600 text-slate-500 hover:bg-zinc-200 hover:bg-slate-200"
                 }`}
               >
                 {genderPreferenceLabels[pref]}
@@ -352,7 +352,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
 
         {/* Location */}
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
             Locație *
           </label>
           <input
@@ -378,7 +378,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
             <div 
               onClick={() => setIsPaid(!isPaid)}
               className={`w-12 h-6 rounded-full transition-colors ${
-                isPaid ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600"
+                isPaid ? "bg-emerald-500" : "bg-zinc-300 bg-slate-200"
               }`}
             >
               <div 
@@ -387,7 +387,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
                 }`}
               />
             </div>
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <span className="text-sm font-medium text-zinc-700 text-slate-600">
               Locație plătită
             </span>
           </label>
@@ -416,7 +416,7 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-2">
             Descriere (opțional)
           </label>
           <textarea

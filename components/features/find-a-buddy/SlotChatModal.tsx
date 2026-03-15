@@ -120,9 +120,9 @@ export default function SlotChatModal({ slot, userId, onClose }: SlotChatModalPr
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="card p-0 max-w-md w-full max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-200 border-slate-200">
           <div>
-            <h2 className="font-bold text-zinc-900 dark:text-white">
+            <h2 className="font-bold text-zinc-900 text-slate-900">
               💬 Chat Antrenament
             </h2>
             <p className="text-sm text-zinc-500">
@@ -134,14 +134,14 @@ export default function SlotChatModal({ slot, userId, onClose }: SlotChatModalPr
           </div>
           <button 
             onClick={onClose} 
-            className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 text-2xl"
+            className="text-zinc-500 hover:text-zinc-700 hover:text-slate-600 text-2xl"
           >
             ×
           </button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-2 p-4 bg-zinc-50 dark:bg-zinc-800 min-h-[200px] max-h-[300px]">
+        <div className="flex-1 overflow-y-auto space-y-2 p-4 bg-zinc-50 bg-white min-h-[200px] max-h-[300px]">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500"></div>
@@ -171,19 +171,19 @@ export default function SlotChatModal({ slot, userId, onClose }: SlotChatModalPr
                   key={msg.id} 
                   className={`p-2 rounded-lg ${
                     isOwnMessage 
-                      ? "bg-emerald-100 dark:bg-emerald-900/30 ml-8" 
-                      : "bg-zinc-100 dark:bg-zinc-700 mr-8"
+                      ? "bg-emerald-100 bg-emerald-100 ml-8" 
+                      : "bg-zinc-100 bg-slate-100 mr-8"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-xs font-medium text-zinc-900 dark:text-white">
+                    <span className="text-xs font-medium text-zinc-900 text-slate-900">
                       {msg.userName}
                     </span>
                     <span className="text-xs text-zinc-500">
                       {formatTime(msg.createdAt)}
                     </span>
                   </div>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <p className="text-sm text-zinc-700 text-slate-600">
                     {msg.content}
                   </p>
                 </div>
@@ -194,7 +194,7 @@ export default function SlotChatModal({ slot, userId, onClose }: SlotChatModalPr
         </div>
 
         {/* Message Input */}
-        <form onSubmit={sendMessage} className="p-4 border-t border-zinc-200 dark:border-zinc-700">
+        <form onSubmit={sendMessage} className="p-4 border-t border-zinc-200 border-slate-200">
           <div className="flex gap-2">
             <input
               type="text"

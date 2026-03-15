@@ -254,49 +254,49 @@ Return ONLY valid JSON (no markdown formatting) with this exact structure:
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 transition-colors">
+    <div className="min-h-screen bg-slate-50 transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">{t("workout.title")}</h1>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1">{t("workout.subtitle")}</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t("workout.title")}</h1>
+          <p className="text-zinc-500 text-slate-500 mt-1">{t("workout.subtitle")}</p>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
-            <p className="text-red-600 dark:text-red-400">{error}</p>
+          <div className="mb-6 p-4 rounded-lg bg-red-50 border-red-100">
+            <p className="text-red-600">{error}</p>
           </div>
         )}
 
         {/* Success */}
         {success && (
-          <div className="mb-6 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
-            <p className="text-emerald-600 dark:text-emerald-400">{success}</p>
+          <div className="mb-6 p-4 rounded-lg bg-emerald-50 border-emerald-100">
+            <p className="text-emerald-600 text-emerald-600">{success}</p>
           </div>
         )}
 
         {/* Profile Info */}
         {!profile && (
-          <div className="card p-4 mb-6 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800">
-            <p className="text-amber-700 dark:text-amber-400">{t("workout.completeProfile")}</p>
+          <div className="card p-4 mb-6 bg-amber-50 border-amber-100">
+            <p className="text-amber-700">{t("workout.completeProfile")}</p>
           </div>
         )}
 
         {/* Generate Workout Section */}
-        <div className="card p-6 mb-8 dark:bg-zinc-900">
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Generate New Workout</h2>
+        <div className="card p-6 mb-8 bg-white">
+          <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Generate New Workout</h2>
           
           {/* Workout Type Selection */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+            <label className="block text-sm font-medium text-slate-700 mb-3">
               Select workout type
             </label>
             <div className="flex gap-4">
@@ -304,19 +304,19 @@ Return ONLY valid JSON (no markdown formatting) with this exact structure:
                 onClick={() => setWorkoutType("gym")}
                 className={`flex-1 p-4 rounded-xl border-2 transition-all ${
                   workoutType === "gym"
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                    : "border-zinc-200 dark:border-zinc-700 hover:border-emerald-300"
+                    ? "border-emerald-500 bg-emerald-50 bg-emerald-50"
+                    : "border-zinc-200 border-slate-200 hover:border-emerald-300"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-emerald-600 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                     </svg>
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-zinc-900 dark:text-white">Gym Workout</p>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Full equipment</p>
+                    <p className="font-semibold text-zinc-900 text-slate-900">Gym Workout</p>
+                    <p className="text-sm text-zinc-500 text-slate-500">Full equipment</p>
                   </div>
                 </div>
               </button>
@@ -325,19 +325,19 @@ Return ONLY valid JSON (no markdown formatting) with this exact structure:
                 onClick={() => setWorkoutType("home")}
                 className={`flex-1 p-4 rounded-xl border-2 transition-all ${
                   workoutType === "home"
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                    : "border-zinc-200 dark:border-zinc-700 hover:border-emerald-300"
+                    ? "border-emerald-500 bg-emerald-50 bg-emerald-50"
+                    : "border-zinc-200 border-slate-200 hover:border-emerald-300"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                     </svg>
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-zinc-900 dark:text-white">Home Workout</p>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Bodyweight only</p>
+                    <p className="font-semibold text-zinc-900 text-slate-900">Home Workout</p>
+                    <p className="text-sm text-zinc-500 text-slate-500">Bodyweight only</p>
                   </div>
                 </div>
               </button>
@@ -371,15 +371,15 @@ Return ONLY valid JSON (no markdown formatting) with this exact structure:
 
         {/* Generated Workout */}
         {generatedWorkout && (
-          <div className="card p-6 mb-8 dark:bg-zinc-900">
+          <div className="card p-6 mb-8 bg-white">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">Your {workoutType === "gym" ? "Gym" : "Home"} Workout</h2>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">{generatedWorkout.duration}</p>
+                <h2 className="text-xl font-semibold text-zinc-900 text-slate-900">Your {workoutType === "gym" ? "Gym" : "Home"} Workout</h2>
+                <p className="text-sm text-zinc-500 text-slate-500">{generatedWorkout.duration}</p>
               </div>
               <button
                 onClick={saveWorkout}
-                className="btn-secondary flex items-center gap-2 dark:bg-zinc-800 dark:text-zinc-200"
+                className="btn-secondary flex items-center gap-2 bg-slate-50 text-slate-700"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -393,25 +393,25 @@ Return ONLY valid JSON (no markdown formatting) with this exact structure:
                 <div
                   key={index}
                   className={`rounded-xl p-4 ${
-                    day.exercises.length > 0 ? "bg-zinc-50 dark:bg-zinc-800" : "bg-zinc-100 dark:bg-zinc-800/50"
+                    day.exercises.length > 0 ? "bg-zinc-50 bg-slate-50" : "bg-zinc-100 bg-slate-100"
                   }`}
                 >
-                  <h3 className="font-semibold text-zinc-900 dark:text-white mb-3">{day.day}</h3>
+                  <h3 className="font-semibold text-zinc-900 text-slate-900 mb-3">{day.day}</h3>
                   {day.exercises.length > 0 ? (
                     <ul className="space-y-2">
                       {day.exercises.map((exercise, i) => (
-                        <li key={i} className="text-sm py-2 border-b border-zinc-100 dark:border-zinc-700 last:border-0">
+                        <li key={i} className="text-sm py-2 border-b border-zinc-100 border-slate-200 last:border-0">
                           <div className="flex justify-between items-start">
-                            <span className="text-zinc-700 dark:text-zinc-200 font-medium">{exercise.name}</span>
+                            <span className="text-zinc-700 text-slate-700 font-medium">{exercise.name}</span>
                           </div>
-                          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                          <div className="text-xs text-zinc-500 text-slate-500 mt-1">
                             {exercise.sets} × {exercise.reps} · Rest: {exercise.rest || "60s"}
                           </div>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-zinc-400 dark:text-zinc-500 italic">Rest day</p>
+                    <p className="text-sm text-zinc-400 text-slate-400 italic">Rest day</p>
                   )}
                 </div>
               ))}
@@ -421,49 +421,49 @@ Return ONLY valid JSON (no markdown formatting) with this exact structure:
 
         {/* Saved Workouts */}
         <div>
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Saved Workouts</h2>
+          <h2 className="text-xl font-semibold text-zinc-900 text-slate-900 mb-4">Saved Workouts</h2>
           {savedWorkouts.length === 0 ? (
-            <div className="card p-6 text-center dark:bg-zinc-900">
-              <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
+            <div className="card p-6 text-center bg-white">
+              <div className="w-16 h-16 rounded-full bg-zinc-100 bg-slate-50 flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
-              <p className="text-zinc-500 dark:text-zinc-400">No saved workouts yet</p>
+              <p className="text-zinc-500 text-slate-500">No saved workouts yet</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {savedWorkouts.map((workout) => (
                 <div
                   key={workout.id}
-                  className="card p-4 dark:bg-zinc-900"
+                  className="card p-4 bg-white"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                         workout.type === "gym" 
-                          ? "bg-emerald-100 dark:bg-emerald-900/30" 
-                          : "bg-blue-100 dark:bg-blue-900/30"
+                          ? "bg-emerald-100 bg-emerald-100" 
+                          : "bg-blue-100 bg-blue-100"
                       }`}>
                         {workout.type === "gym" ? (
-                          <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-emerald-600 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                           </svg>
                         ) : (
-                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-blue-600 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                           </svg>
                         )}
                       </div>
                       <div>
-                        <h3 className="font-medium text-zinc-900 dark:text-white">{workout.name}</h3>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        <h3 className="font-medium text-zinc-900 text-slate-900">{workout.name}</h3>
+                        <p className="text-sm text-zinc-500 text-slate-500">
                           {workout.type === "gym" ? "Gym" : "Home"} · {formatDate(workout.createdAt)}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="text-sm text-zinc-600 dark:text-zinc-300">
+                  <div className="text-sm text-zinc-600 text-slate-600">
                     {workout.plan?.length || 0} workout days
                   </div>
                 </div>

@@ -183,14 +183,14 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Error Message */}
       {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="p-3 bg-red-50 bg-red-50 border border-red-200 border-red-200 rounded-lg">
+          <p className="text-sm text-red-600 text-red-600">{error}</p>
         </div>
       )}
 
       {/* Sport Type */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
           Sport *
         </label>
         <select
@@ -210,7 +210,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
 
       {/* City */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
           Oraș *
         </label>
         <select
@@ -228,7 +228,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
 
       {/* Gender Preference */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
           Preferință Partener
         </label>
         <div className="grid grid-cols-3 gap-2">
@@ -239,14 +239,14 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
               onClick={() => setFormData({ ...formData, genderPreference: pref })}
               className={`p-3 rounded-lg border-2 text-center transition-all ${
                 formData.genderPreference === pref
-                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                  : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
+                  ? "border-emerald-500 bg-emerald-50 bg-emerald-50"
+                  : "border-zinc-200 border-slate-200 hover:border-zinc-300"
               }`}
             >
               <span className="text-lg block mb-1">
                 {pref === "anyone" ? "👥" : pref === "M" ? "👨" : "👩"}
               </span>
-              <span className="text-xs text-zinc-700 dark:text-zinc-300">
+              <span className="text-xs text-zinc-700 text-slate-600">
                 {genderPreferenceLabels[pref]}
               </span>
             </button>
@@ -257,7 +257,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
       {/* Date & Time */}
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
             Dată *
           </label>
           <input
@@ -273,7 +273,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
             Start *
           </label>
           <input
@@ -285,7 +285,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
             Final *
           </label>
           <input
@@ -300,7 +300,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
 
       {/* Location */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
           Locație *
         </label>
         <input
@@ -315,7 +315,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
 
       {/* Location Type & Price */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
           Tip Locație
         </label>
         <div className="grid grid-cols-2 gap-2 mb-2">
@@ -324,30 +324,30 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
             onClick={() => setFormData({ ...formData, locationType: "free", price: "" })}
             className={`p-3 rounded-lg border-2 text-center transition-all ${
               formData.locationType === "free"
-                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                : "border-zinc-200 dark:border-zinc-700"
+                ? "border-emerald-500 bg-emerald-50 bg-emerald-50"
+                : "border-zinc-200 border-slate-200"
             }`}
           >
             <span className="text-2xl block">🆓</span>
-            <span className="text-sm text-zinc-700 dark:text-zinc-300">Gratuit</span>
+            <span className="text-sm text-zinc-700 text-slate-600">Gratuit</span>
           </button>
           <button
             type="button"
             onClick={() => setFormData({ ...formData, locationType: "paid" })}
             className={`p-3 rounded-lg border-2 text-center transition-all ${
               formData.locationType === "paid"
-                ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20"
-                : "border-zinc-200 dark:border-zinc-700"
+                ? "border-yellow-500 bg-yellow-50 bg-yellow-50"
+                : "border-zinc-200 border-slate-200"
             }`}
           >
             <span className="text-2xl block">💰</span>
-            <span className="text-sm text-zinc-700 dark:text-zinc-300">Plătit</span>
+            <span className="text-sm text-zinc-700 text-slate-600">Plătit</span>
           </button>
         </div>
         
         {formData.locationType === "paid" && (
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
               Preț (RON) *
             </label>
             <input
@@ -366,7 +366,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
 
       {/* Max Participants */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
           Nr. Maxim Participanți *
         </label>
         <input
@@ -382,7 +382,7 @@ export default function CreateSportEventForm({ onSuccess, onCancel }: CreateSpor
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 text-slate-600 mb-1">
           Descriere (opțional)
         </label>
         <textarea

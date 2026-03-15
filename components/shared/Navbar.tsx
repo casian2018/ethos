@@ -39,10 +39,10 @@ export default function Navbar({ user }: NavbarProps) {
 
   // Full navbar for app pages
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white bg-white border-b border-zinc-200 border-slate-200">
       <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
         <div className="flex items-center gap-8">
-          <Link href="/dev/main" className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+          <Link href="/dev/main" className="text-xl font-bold text-emerald-600 text-emerald-600">
             ETHOS
           </Link>
           
@@ -54,8 +54,8 @@ export default function Navbar({ user }: NavbarProps) {
                 href={item.href}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   pathname === item.href
-                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                    : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                    ? "bg-emerald-100 bg-emerald-100 text-emerald-700 text-emerald-700"
+                    : "text-zinc-600 text-slate-600 hover:bg-zinc-100 hover:bg-slate-200"
                 }`}
               >
                 <span className="flex items-center gap-1.5">
@@ -72,13 +72,13 @@ export default function Navbar({ user }: NavbarProps) {
             <>
               <Link
                 href="/dev/profile"
-                className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-sm font-semibold hover:ring-2 hover:ring-emerald-500 transition-all"
+                className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-sm font-semibold hover:ring-2 hover:ring-emerald-500 transition-all"
               >
                 {user.email?.charAt(0).toUpperCase() || "U"}
               </Link>
               <button
                 onClick={handleSignOut}
-                className="hidden md:block px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
+                className="hidden md:block px-3 py-2 text-sm text-zinc-600 text-slate-600 hover:text-red-600 font-medium transition-colors"
               >
                 Sign Out
               </button>
@@ -95,15 +95,15 @@ export default function Navbar({ user }: NavbarProps) {
       </div>
 
       {/* Mobile bottom navigation - all 9 items */}
-      <div className="md:hidden flex justify-around py-2 bg-white dark:bg-zinc-800 border-t border-zinc-200 dark:border-zinc-700 overflow-x-auto">
+      <div className="md:hidden flex justify-around py-2 bg-white bg-white border-t border-zinc-200 border-slate-200 overflow-x-auto">
         {appNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
             className={`flex flex-col items-center text-xs py-1 px-2 ${
               pathname === item.href
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-zinc-500 dark:text-zinc-400"
+                ? "text-emerald-600 text-emerald-600"
+                : "text-zinc-500 text-slate-500"
             }`}
           >
             <span className="text-lg">{item.icon}</span>

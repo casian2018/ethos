@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Dumbbell, Users, BarChart, User, Settings, Sun, Moon, Languages } from "lucide-react";
-import { useTheme } from "@/providers/ThemeProvider";
+import { Home, Dumbbell, Users, BarChart, User, Settings, Languages } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -16,7 +15,6 @@ const navigation = [
 
 export default function MobileMenu() {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
 
   return (
     <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-card px-6 py-4">
@@ -49,12 +47,6 @@ export default function MobileMenu() {
           </li>
           <li className="mt-auto">
             <div className="flex items-center gap-x-4">
-              <button
-                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                className="rounded-full p-2 hover:bg-background"
-              >
-                {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-              </button>
               <button className="rounded-full p-2 hover:bg-background">
                 <Languages className="h-5 w-5" />
               </button>

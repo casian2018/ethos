@@ -301,11 +301,11 @@ export default function ExercisesPage() {
   const getCategoryBadge = (category: ExerciseCategory) => {
     switch (category) {
       case 'Sala':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+        return 'bg-emerald-100 text-emerald-700 bg-emerald-100 text-emerald-600';
       case 'Acasa':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+        return 'bg-blue-100 text-blue-700 bg-blue-100 text-blue-600';
       case 'Stretching':
-        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
+        return 'bg-purple-100 text-purple-700 bg-purple-100 text-purple-600';
       default:
         return 'bg-zinc-100 text-zinc-700';
     }
@@ -315,11 +315,11 @@ export default function ExercisesPage() {
   const getDifficultyBadge = (difficulty: DifficultyLevel) => {
     switch (difficulty) {
       case 'Beginner':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+        return 'bg-green-100 text-green-700 bg-green-100 text-green-600';
       case 'Intermediate':
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+        return 'bg-yellow-100 text-yellow-700 bg-yellow-100 text-yellow-600';
       case 'Advanced':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+        return 'bg-red-100 text-red-700 bg-red-100 text-red-600';
       default:
         return 'bg-zinc-100 text-zinc-700';
     }
@@ -328,13 +328,13 @@ export default function ExercisesPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <header className="mb-6">
-        <Link href="/dev/main" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 mb-2 inline-flex items-center gap-1 text-sm font-medium">
+        <Link href="/dev/main" className="text-emerald-600 hover:text-emerald-700 text-emerald-600 mb-2 inline-flex items-center gap-1 text-sm font-medium">
           ← Înapoi la Dashboard
         </Link>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-zinc-900 text-slate-900">
           Baza de Date Exerciții
         </h1>
-        <p className="text-zinc-600 dark:text-zinc-400 mt-1">
+        <p className="text-zinc-600 text-slate-500 mt-1">
           Găsește exercițiul perfect pentru antrenamentul tău
         </p>
       </header>
@@ -352,7 +352,7 @@ export default function ExercisesPage() {
             placeholder="Caută exerciții... (nume, grupă musculară, tags)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-3 bg-white bg-slate-50 border border-zinc-200 border-slate-200 rounded-xl text-zinc-900 text-slate-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -366,7 +366,7 @@ export default function ExercisesPage() {
             className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
               categoryFilter === category
                 ? 'bg-emerald-600 text-white'
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                : 'bg-zinc-100 bg-slate-50 text-zinc-600 text-slate-500 hover:bg-zinc-200 hover:bg-slate-200'
             }`}
           >
             {category}
@@ -375,7 +375,7 @@ export default function ExercisesPage() {
       </div>
 
       {/* Results count */}
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+      <p className="text-sm text-zinc-500 text-slate-500 mb-4">
         {filteredExercises.length} exerciții găsite
       </p>
 
@@ -385,10 +385,10 @@ export default function ExercisesPage() {
           <button
             key={exercise.id}
             onClick={() => setSelectedExercise(exercise)}
-            className="bg-white dark:bg-zinc-800 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700 text-left hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-md transition-all group"
+            className="bg-white bg-slate-50 rounded-xl p-4 border border-zinc-200 border-slate-200 text-left hover:border-emerald-500 hover:border-emerald-500 hover:shadow-md transition-all group"
           >
             <div className="flex items-start justify-between mb-2">
-              <h3 className="font-semibold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+              <h3 className="font-semibold text-zinc-900 text-slate-900 group-hover:text-emerald-600 group-hover:text-emerald-600">
                 {exercise.name}
               </h3>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryBadge(exercise.category)}`}>
@@ -397,11 +397,11 @@ export default function ExercisesPage() {
             </div>
             
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-zinc-500 dark:text-zinc-400">
+              <span className="text-sm text-zinc-500 text-slate-500">
                 {exercise.muscleGroup}
               </span>
               {exercise.secondaryMuscles && exercise.secondaryMuscles.length > 0 && (
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                <span className="text-xs text-zinc-400 text-slate-500">
                   + {exercise.secondaryMuscles.join(', ')}
                 </span>
               )}
@@ -413,7 +413,7 @@ export default function ExercisesPage() {
               </span>
               <div className="flex gap-1 flex-wrap">
                 {exercise.equipment.slice(0, 2).map((eq, i) => (
-                  <span key={i} className="text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
+                  <span key={i} className="text-xs text-zinc-400 text-slate-500 bg-zinc-100 bg-slate-100 px-2 py-0.5 rounded">
                     {eq}
                   </span>
                 ))}
@@ -429,12 +429,12 @@ export default function ExercisesPage() {
       {/* No results */}
       {filteredExercises.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-zinc-500 dark:text-zinc-400">
+          <p className="text-zinc-500 text-slate-500">
             Nu am găsit exerciții care să corespundă căutării tale.
           </p>
           <button
             onClick={() => {setSearchQuery(''); setCategoryFilter('Toate');}}
-            className="mt-4 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium"
+            className="mt-4 text-emerald-600 hover:text-emerald-700 text-emerald-600 font-medium"
           >
             Șterge filtrele
           </button>
@@ -445,13 +445,13 @@ export default function ExercisesPage() {
       {selectedExercise && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setSelectedExercise(null)}>
           <div 
-            className="bg-white dark:bg-zinc-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white bg-slate-50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white dark:bg-zinc-800 p-4 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+            <div className="sticky top-0 bg-white bg-slate-50 p-4 border-b border-zinc-200 border-slate-200 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                <h2 className="text-xl font-bold text-zinc-900 text-slate-900">
                   {selectedExercise.name}
                 </h2>
                 <div className="flex items-center gap-2 mt-1">
@@ -465,7 +465,7 @@ export default function ExercisesPage() {
               </div>
               <button
                 onClick={() => setSelectedExercise(null)}
-                className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+                className="p-2 hover:bg-zinc-100 hover:bg-slate-200 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -478,7 +478,7 @@ export default function ExercisesPage() {
               {/* Video Tutorial */}
               {(selectedExercise.videoUrl || selectedExercise.gifUrl) && (
                 <div>
-                  <h3 className="font-medium text-zinc-900 dark:text-white mb-3">
+                  <h3 className="font-medium text-zinc-900 text-slate-900 mb-3">
                     🎬 Tutorial Video
                   </h3>
                   <div className="relative aspect-video bg-zinc-900 rounded-xl overflow-hidden">
@@ -505,12 +505,12 @@ export default function ExercisesPage() {
                       {selectedExercise.videoTimestamps.map((ts, i) => (
                         <button
                           key={i}
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center gap-2"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 hover:bg-emerald-50 transition-colors flex items-center gap-2"
                         >
-                          <span className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">
+                          <span className="text-emerald-600 text-emerald-600 font-mono text-sm">
                             {Math.floor(ts.time / 60)}:{String(ts.time % 60).padStart(2, '0')}
                           </span>
-                          <span className="text-zinc-600 dark:text-zinc-300 text-sm">
+                          <span className="text-zinc-600 text-slate-600 text-sm">
                             {ts.title}
                           </span>
                         </button>
@@ -522,15 +522,15 @@ export default function ExercisesPage() {
 
               {/* Muscle Groups */}
               <div>
-                <h3 className="font-medium text-zinc-900 dark:text-white mb-2">
+                <h3 className="font-medium text-zinc-900 text-slate-900 mb-2">
                   🎯 Grupă Musculară
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-sm">
+                  <span className="px-3 py-1 bg-emerald-100 bg-emerald-100 text-emerald-700 text-emerald-600 rounded-full text-sm">
                     {selectedExercise.muscleGroup}
                   </span>
                   {selectedExercise.secondaryMuscles?.map((muscle, i) => (
-                    <span key={i} className="px-3 py-1 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-full text-sm">
+                    <span key={i} className="px-3 py-1 bg-zinc-100 bg-slate-100 text-zinc-600 text-slate-600 rounded-full text-sm">
                       {muscle}
                     </span>
                   ))}
@@ -539,12 +539,12 @@ export default function ExercisesPage() {
 
               {/* Equipment */}
               <div>
-                <h3 className="font-medium text-zinc-900 dark:text-white mb-2">
+                <h3 className="font-medium text-zinc-900 text-slate-900 mb-2">
                   🏋️ Echipament Necesar
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {selectedExercise.equipment.map((eq, i) => (
-                    <span key={i} className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-sm">
+                    <span key={i} className="px-3 py-1 bg-blue-100 bg-blue-100 text-blue-700 text-blue-600 rounded-full text-sm">
                       {eq}
                     </span>
                   ))}
@@ -553,16 +553,16 @@ export default function ExercisesPage() {
 
               {/* Instructions */}
               <div>
-                <h3 className="font-medium text-zinc-900 dark:text-white mb-3">
+                <h3 className="font-medium text-zinc-900 text-slate-900 mb-3">
                   📝 Explicație Pas cu Pas
                 </h3>
                 <ol className="space-y-2">
                   {selectedExercise.instructions.map((step, i) => (
                     <li key={i} className="flex gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-sm font-medium">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-100 bg-emerald-100 text-emerald-600 text-emerald-600 rounded-full flex items-center justify-center text-sm font-medium">
                         {i + 1}
                       </span>
-                      <span className="text-zinc-600 dark:text-zinc-300">
+                      <span className="text-zinc-600 text-slate-600">
                         {step}
                       </span>
                     </li>
@@ -572,14 +572,14 @@ export default function ExercisesPage() {
 
               {/* Tips */}
               <div>
-                <h3 className="font-medium text-emerald-700 dark:text-emerald-400 mb-3">
+                <h3 className="font-medium text-emerald-700 text-emerald-600 mb-3">
                   ✨ Tips & Tricks
                 </h3>
                 <ul className="space-y-2">
                   {selectedExercise.tips.map((tip, i) => (
                     <li key={i} className="flex gap-2 items-start">
                       <span className="text-emerald-500 mt-1">✓</span>
-                      <span className="text-zinc-600 dark:text-zinc-300">
+                      <span className="text-zinc-600 text-slate-600">
                         {tip}
                       </span>
                     </li>
@@ -590,14 +590,14 @@ export default function ExercisesPage() {
               {/* Mistakes */}
               {selectedExercise.mistakes && selectedExercise.mistakes.length > 0 && (
                 <div>
-                  <h3 className="font-medium text-red-600 dark:text-red-400 mb-3">
+                  <h3 className="font-medium text-red-600 text-red-600 mb-3">
                     ⚠️ Greșeli Comune de Evitat
                   </h3>
                   <ul className="space-y-2">
                     {selectedExercise.mistakes.map((mistake, i) => (
                       <li key={i} className="flex gap-2 items-start">
                         <span className="text-red-500 mt-1">✗</span>
-                        <span className="text-zinc-600 dark:text-zinc-300">
+                        <span className="text-zinc-600 text-slate-600">
                           {mistake}
                         </span>
                       </li>
@@ -608,14 +608,14 @@ export default function ExercisesPage() {
 
               {/* Tags */}
               <div>
-                <h3 className="font-medium text-zinc-900 dark:text-white mb-2">
+                <h3 className="font-medium text-zinc-900 text-slate-900 mb-2">
                   🏷️ Căutare
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {selectedExercise.tags.map((tag, i) => (
                     <span 
                       key={i} 
-                      className="px-2 py-1 bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 rounded text-xs cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-600"
+                      className="px-2 py-1 bg-zinc-100 bg-slate-100 text-zinc-500 text-slate-500 rounded text-xs cursor-pointer hover:bg-zinc-200 hover:bg-slate-300"
                       onClick={() => {setSearchQuery(tag); setSelectedExercise(null);}}
                     >
                       #{tag}

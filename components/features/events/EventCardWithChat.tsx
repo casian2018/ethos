@@ -236,9 +236,9 @@ export default function EventCardWithChat({ event, onUpdate }: EventCardProps) {
   // Get intensity badge color
   const getIntensityBadge = () => {
     const colors = {
-      low: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-      medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
-      high: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+      low: "bg-blue-100 text-blue-700 bg-blue-100 text-blue-700",
+      medium: "bg-yellow-100 text-yellow-700 bg-yellow-100 text-yellow-700",
+      high: "bg-red-100 text-red-700 bg-red-100 text-red-700",
     };
     const labels = {
       low: "🟢 Ușor",
@@ -256,9 +256,9 @@ export default function EventCardWithChat({ event, onUpdate }: EventCardProps) {
   if (isExpired && event.status !== "completed") {
     return (
       <>
-        <div className="card p-4 opacity-60 bg-zinc-100 dark:bg-zinc-800">
+        <div className="card p-4 opacity-60 bg-zinc-100 bg-white">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-2xl">
+            <div className="w-14 h-14 rounded-xl bg-zinc-200 bg-slate-100 flex items-center justify-center text-2xl">
               {sport?.emoji || "🏃"}
             </div>
             <div className="flex-1">
@@ -283,11 +283,11 @@ export default function EventCardWithChat({ event, onUpdate }: EventCardProps) {
             <div className="card p-6 max-w-sm w-full">
               <div className="text-center mb-4">
                 <div className="text-4xl mb-2">⚠️</div>
-                <h3 className="font-bold text-red-600 dark:text-red-400 text-lg">
+                <h3 className="font-bold text-red-600 text-red-600 text-lg">
                   Atenție Medicală
                 </h3>
               </div>
-              <p className="text-zinc-600 dark:text-zinc-300 text-center mb-6">
+              <p className="text-zinc-600 text-slate-600 text-center mb-6">
                 {warningMessage}
               </p>
               <div className="flex gap-2">
@@ -316,14 +316,14 @@ export default function EventCardWithChat({ event, onUpdate }: EventCardProps) {
       <div className="card p-4 hover:border-emerald-500 transition-all">
         <div className="flex items-center gap-4">
           {/* Sport Icon */}
-          <div className="w-14 h-14 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl flex-shrink-0">
+          <div className="w-14 h-14 rounded-xl bg-emerald-100 bg-emerald-100 flex items-center justify-center text-2xl flex-shrink-0">
             {sport?.emoji || "🏃"}
           </div>
 
           {/* Main Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h3 className="font-semibold text-zinc-900 dark:text-white truncate">
+              <h3 className="font-semibold text-zinc-900 text-slate-900 truncate">
                 {sport?.label || event.sportType}
               </h3>
               {/* Intensity Badge */}
@@ -420,11 +420,11 @@ export default function EventCardWithChat({ event, onUpdate }: EventCardProps) {
           <div className="card p-6 max-w-sm w-full">
             <div className="text-center mb-4">
               <div className="text-4xl mb-2">⚠️</div>
-              <h3 className="font-bold text-red-600 dark:text-red-400 text-lg">
+              <h3 className="font-bold text-red-600 text-red-600 text-lg">
                 Atenție Medicală
               </h3>
             </div>
-            <p className="text-zinc-600 dark:text-zinc-300 text-center mb-6">
+            <p className="text-zinc-600 text-slate-600 text-center mb-6">
               {warningMessage}
             </p>
             <div className="flex gap-2">
@@ -530,9 +530,9 @@ function GroupChatModal({ event, user, onClose }: GroupChatModalProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="card p-4 max-w-md w-full max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 pb-4 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-zinc-200 border-slate-200">
           <div>
-            <h2 className="font-bold text-zinc-900 dark:text-white">
+            <h2 className="font-bold text-zinc-900 text-slate-900">
               💬 Chat Grup
             </h2>
             <p className="text-sm text-zinc-500">
@@ -545,7 +545,7 @@ function GroupChatModal({ event, user, onClose }: GroupChatModalProps) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-2 mb-4 p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg min-h-[200px]">
+        <div className="flex-1 overflow-y-auto space-y-2 mb-4 p-2 bg-zinc-50 bg-white rounded-lg min-h-[200px]">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500"></div>
@@ -562,19 +562,19 @@ function GroupChatModal({ event, user, onClose }: GroupChatModalProps) {
                   key={msg.id} 
                   className={`p-2 rounded-lg ${
                     isOwnMessage 
-                      ? "bg-emerald-100 dark:bg-emerald-900/30 ml-8" 
-                      : "bg-zinc-100 dark:bg-zinc-700 mr-8"
+                      ? "bg-emerald-100 bg-emerald-100 ml-8" 
+                      : "bg-zinc-100 bg-slate-100 mr-8"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-xs font-medium text-zinc-900 dark:text-white">
+                    <span className="text-xs font-medium text-zinc-900 text-slate-900">
                       {msg.userName}
                     </span>
                     <span className="text-xs text-zinc-500">
                       {formatTime(msg.createdAt)}
                     </span>
                   </div>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <p className="text-sm text-zinc-700 text-slate-600">
                     {msg.message}
                   </p>
                 </div>
