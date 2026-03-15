@@ -85,6 +85,14 @@ const sportEmojis: Record<string, string> = {
   cycling: "🚴",
   basketball: "🏀",
   volleyball: "🏐",
+  padel: "🎾",
+  badminton: "🏸",
+  hiking: "🥾",
+  calisthenics: "🤸",
+  pickleball: "🏓",
+  climbing: "🧗",
+  rowing: "🚣",
+  skating: "🛼",
 };
 
 function formatWorkoutDate(dateTime: Date | Timestamp | null, lang: string): string {

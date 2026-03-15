@@ -4,7 +4,6 @@
  * TypeScript definitions for user profiles and related data.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Firestore } from "firebase/firestore";
 
 // ==================== Medical Conditions ====================
@@ -80,7 +79,15 @@ export type PreferredSport =
   | "volleyball"    // Volei
   | "yoga"          // Yoga
   | "dancing"       // Dans
-  | "martial_arts"; // Arte marțiale
+  | "martial_arts"  // Arte marțiale
+  | "padel"         // Padel
+  | "badminton"     // Badminton
+  | "hiking"        // Drumeție
+  | "calisthenics"  // Calisthenics
+  | "pickleball"    // Pickleball
+  | "climbing"      // Escaladă
+  | "rowing"        // Canotaj
+  | "skating";      // Skating
 
 export const preferredSportsList: { value: PreferredSport; label: string; emoji: string }[] = [
   { value: "gym", label: "Sala", emoji: "🏋️" },
@@ -95,6 +102,14 @@ export const preferredSportsList: { value: PreferredSport; label: string; emoji:
   { value: "yoga", label: "Yoga", emoji: "🧘" },
   { value: "dancing", label: "Dans", emoji: "💃" },
   { value: "martial_arts", label: "Arte Marțiale", emoji: "🥋" },
+  { value: "padel", label: "Padel", emoji: "🎾" },
+  { value: "badminton", label: "Badminton", emoji: "🏸" },
+  { value: "hiking", label: "Drumeție", emoji: "🥾" },
+  { value: "calisthenics", label: "Calisthenics", emoji: "🤸" },
+  { value: "pickleball", label: "Pickleball", emoji: "🏓" },
+  { value: "climbing", label: "Escaladă", emoji: "🧗" },
+  { value: "rowing", label: "Canotaj", emoji: "🚣" },
+  { value: "skating", label: "Skating", emoji: "🛼" },
 ];
 
 // ==================== Medical Conditions List ====================
@@ -423,7 +438,15 @@ export type SportType =
   | "volleyball" 
   | "yoga" 
   | "dancing" 
-  | "martial_arts";
+  | "martial_arts"
+  | "padel"
+  | "badminton"
+  | "hiking"
+  | "calisthenics"
+  | "pickleball"
+  | "climbing"
+  | "rowing"
+  | "skating";
 
 export type GenderPreference = "M" | "F" | "anyone";
 
@@ -473,6 +496,14 @@ export const sportTypeLabels: Record<SportType, { label: string; emoji: string }
   yoga: { label: "Yoga", emoji: "🧘" },
   dancing: { label: "Dans", emoji: "💃" },
   martial_arts: { label: "Arte Marțiale", emoji: "🥋" },
+  padel: { label: "Padel", emoji: "🎾" },
+  badminton: { label: "Badminton", emoji: "🏸" },
+  hiking: { label: "Drumeție", emoji: "🥾" },
+  calisthenics: { label: "Calisthenics", emoji: "🤸" },
+  pickleball: { label: "Pickleball", emoji: "🏓" },
+  climbing: { label: "Escaladă", emoji: "🧗" },
+  rowing: { label: "Canotaj", emoji: "🚣" },
+  skating: { label: "Skating", emoji: "🛼" },
 };
 
 export const genderPreferenceLabels: Record<GenderPreference, string> = {
@@ -499,6 +530,14 @@ export const sportIntensityMap: Record<SportType, SportIntensity> = {
   yoga: "low",
   dancing: "medium",
   martial_arts: "high",
+  padel: "medium",
+  badminton: "medium",
+  hiking: "medium",
+  calisthenics: "medium",
+  pickleball: "low",
+  climbing: "high",
+  rowing: "high",
+  skating: "medium",
 };
 
 // Medical conditions that are risky for high intensity sports
@@ -669,6 +708,9 @@ export async function createSlotChat(
   buddyId: string
 ): Promise<void> {
   const { doc, setDoc, serverTimestamp, collection } = await import("firebase/firestore");
+  void hostId;
+  void buddyId;
+  void collection;
   
   // Create a welcome message
   const chatRef = doc(db, `availability_slots/${slot.id}/chat`);

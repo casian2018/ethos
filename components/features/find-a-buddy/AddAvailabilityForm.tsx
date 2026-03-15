@@ -106,10 +106,16 @@ export default function AddAvailabilityForm({
   }));
 
   const preferredSports = (profile?.preferredSports || []).filter(isSupportedSport);
-  const availableSports =
-    preferredSports.length > 0
-      ? supportedSports.filter((sport) => preferredSports.includes(sport.value))
-      : supportedSports;
+  const availableSports = [...supportedSports].sort((left, right) => {
+    const leftPreferred = preferredSports.includes(left.value);
+    const rightPreferred = preferredSports.includes(right.value);
+
+    if (leftPreferred !== rightPreferred) {
+      return Number(rightPreferred) - Number(leftPreferred);
+    }
+
+    return left.label.localeCompare(right.label, language === "ro" ? "ro" : "en");
+  });
 
   const participantOptions = sessionMode === "group" ? groupParticipantOptions : duoParticipantOptions;
   const minDate = new Date().toISOString().split("T")[0];

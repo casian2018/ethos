@@ -80,6 +80,14 @@ const englishSportLabels: Record<SportType, string> = {
   yoga: "Yoga",
   dancing: "Dancing",
   martial_arts: "Martial arts",
+  padel: "Padel",
+  badminton: "Badminton",
+  hiking: "Hiking",
+  calisthenics: "Calisthenics",
+  pickleball: "Pickleball",
+  climbing: "Climbing",
+  rowing: "Rowing",
+  skating: "Skating",
 };
 
 function parseDate(value: unknown): Date {
