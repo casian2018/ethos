@@ -14,15 +14,19 @@ import {
   Moon as MoonIcon,
   BarChart,
   User, 
-  Globe
+  Globe,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { useState } from "react";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 const mainNavigation = [
   { name: "Dashboard", href: "/dev/main", icon: Home },
-  { name: "Train", href: "/dev/workout", icon: Dumbbell },
+  { name: "Train", href: "/train", icon: Dumbbell },
   { name: "Competition", href: "/dev/competition", icon: Trophy },
   { name: "Events", href: "/dev/events", icon: CalendarDays },
   { name: "Exercises", href: "/dev/exercises", icon: List },
@@ -35,8 +39,20 @@ const mainNavigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { language, setLanguage } = useLanguage();
   const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      if (auth) {
+        await signOut(auth);
+        router.push("/auth");
+      }
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
@@ -132,6 +148,17 @@ export default function Sidebar() {
               </div>
             )}
           </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="text-sm font-medium">
+              {language === "en" ? "Logout" : "Deconectare"}
+            </span>
+          </button>
         </div>
       </div>
     </aside>

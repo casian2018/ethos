@@ -45,12 +45,20 @@ const GOALS = [
   { id: "health", label: "General Health", labelRo: "Sănătate generală" },
 ];
 
+// Updated Categories
 const CATEGORIES = [
-  { id: "discussion", label: "Discussion", labelRo: "Discuții", emoji: "💬" },
-  { id: "question", label: "Question", labelRo: "Întrebare", emoji: "❓" },
-  { id: "workout", label: "Workout", labelRo: "Antrenament", emoji: "🏋️" },
-  { id: "nutrition", label: "Nutrition", labelRo: "Nutriție", emoji: "🥗" },
-  { id: "motivation", label: "Motivation", labelRo: "Motivație", emoji: "🔥" },
+  { id: "nutritie", label: "Nutriție", labelRo: "Nutriție", emoji: "🥗", color: "bg-green-100 text-green-700" },
+  { id: "biohacking", label: "Biohacking", labelRo: "Biohacking", emoji: "🧬", color: "bg-purple-100 text-purple-700" },
+  { id: "workout-tips", label: "Workout Tips", labelRo: "Sfaturi Antrenament", emoji: "💡", color: "bg-blue-100 text-blue-700" },
+  { id: "suport", label: "Suport", labelRo: "Suport", emoji: "🤝", color: "bg-amber-100 text-amber-700" },
+  { id: "discutii", label: "Discuții", labelRo: "Discuții", emoji: "💬", color: "bg-slate-100 text-slate-700" },
+];
+
+// Difficulty tags
+const DIFFICULTY_TAGS = [
+  { id: "beginner", label: "Începător", labelEn: "Beginner", emoji: "🌱", color: "bg-emerald-100 text-emerald-700" },
+  { id: "intermediate", label: "Intermediar", labelEn: "Intermediate", emoji: "💪", color: "bg-blue-100 text-blue-700" },
+  { id: "advanced", label: "Avansat", labelEn: "Advanced", emoji: "🔥", color: "bg-red-100 text-red-700" },
 ];
 
 interface ForumPost {
@@ -65,6 +73,8 @@ interface ForumPost {
   sport?: string;
   goal?: string;
   category?: string;
+  difficulty?: string;
+  isVerifiedExpert?: boolean;
 }
 
 interface UserProfile {
@@ -72,6 +82,7 @@ interface UserProfile {
   badge?: string;
   level?: number;
   karma?: number;
+  isVerifiedExpert?: boolean;
 }
 
 export default function ForumPage() {
@@ -81,7 +92,14 @@ export default function ForumPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newPost, setNewPost] = useState({ title: "", content: "", sport: "", goal: "", category: "discussion" });
+  const [newPost, setNewPost] = useState({ 
+  title: "", 
+  content: "", 
+  sport: "", 
+  goal: "", 
+  category: "discutii",
+  difficulty: "beginner"
+});
   const [creating, setCreating] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "popular">("recent");
   const [votingPosts, setVotingPosts] = useState<Set<string>>(new Set());
@@ -146,7 +164,8 @@ export default function ForumPage() {
           commentCount: commentsSnapshot.data().count,
           sport: data.sport || "",
           goal: data.goal || "",
-          category: data.category || "discussion",
+          category: data.category || "discutii",
+          difficulty: data.difficulty || "beginner",
         } as ForumPost);
       }
       
@@ -193,10 +212,11 @@ export default function ForumPage() {
         dislikes: [],
         sport: newPost.sport || "",
         goal: newPost.goal || "",
-        category: newPost.category || "discussion",
+        category: newPost.category || "discutii",
+        difficulty: newPost.difficulty || "beginner",
       });
 
-      setNewPost({ title: "", content: "", sport: "", goal: "", category: "discussion" });
+      setNewPost({ title: "", content: "", sport: "", goal: "", category: "discutii", difficulty: "beginner" });
       setShowCreateForm(false);
     } catch (err) {
       console.error("Error creating post:", err);
@@ -535,7 +555,7 @@ export default function ForumPage() {
                   type="button"
                   onClick={() => {
                     setShowCreateForm(false);
-                    setNewPost({ title: "", content: "", sport: "", goal: "", category: "discussion" });
+                    setNewPost({ title: "", content: "", sport: "", goal: "", category: "discutii", difficulty: "beginner" });
                   }}
                   className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium transition-colors"
                 >
@@ -589,6 +609,8 @@ export default function ForumPage() {
               // Find sport emoji
               const sportInfo = SPORTS.find(s => s.id === post.sport);
               const categoryInfo = CATEGORIES.find(c => c.id === post.category);
+              const difficultyInfo = DIFFICULTY_TAGS.find(d => d.id === (post.difficulty || "beginner"));
+              const isVerifiedExpert = authorProfile?.isVerifiedExpert || false;
               
               return (
                 <div
@@ -636,21 +658,28 @@ export default function ForumPage() {
                       {/* Badges Row */}
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {categoryInfo && (
-                          <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full font-medium">
+                          <span className={`px-2.5 py-1 text-xs rounded-full font-medium ${categoryInfo.color}`}>
                             {categoryInfo.emoji} {language === "ro" ? categoryInfo.labelRo : categoryInfo.label}
                           </span>
                         )}
+                        {difficultyInfo && (
+                          <span className={`px-2.5 py-1 text-xs rounded-full font-medium ${difficultyInfo.color}`}>
+                            {difficultyInfo.emoji} {language === "ro" ? difficultyInfo.label : difficultyInfo.labelEn}
+                          </span>
+                        )}
                         {sportInfo && (
-                          <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium">
+                          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium">
                             {sportInfo.emoji} {language === "ro" ? sportInfo.labelRo : sportInfo.label}
                           </span>
                         )}
-                        {post.goal && (
-                          <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">
-                            {GOALS.find(g => g.id === post.goal) ? (language === "ro" ? GOALS.find(g => g.id === post.goal)?.labelRo : GOALS.find(g => g.id === post.goal)?.label) : post.goal}
+                        {isVerifiedExpert && (
+                          <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium flex items-center gap-1">
+                            ✓ Expert Verificat
                           </span>
                         )}
                       </div>
+
+                      {/* Title */}
 
                       {/* Title */}
                       <Link href={`/dev/forum/${post.id}`}>

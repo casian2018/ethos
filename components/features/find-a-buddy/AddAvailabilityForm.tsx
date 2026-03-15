@@ -31,8 +31,8 @@ import {
   MedicalCondition
 } from "@/lib/types";
 
-const auth = firebaseAuth!;
-const db = firebaseDb!;
+const auth = firebaseAuth;
+const db = firebaseDb;
 
 interface AddAvailabilityFormProps {
   onSuccess?: () => void;
@@ -83,6 +83,11 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
 
   // Fetch user and profile
   useEffect(() => {
+    if (!auth || !db) {
+      setError("Configurație Firebase lipsă. Contactează administratorul.");
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
@@ -166,6 +171,11 @@ export default function AddAvailabilityForm({ onSuccess, onCancel }: AddAvailabi
     
     setLoading(true);
     try {
+      if (!db || !auth) {
+        setError("Configurație Firebase lipsă. Contactează administratorul.");
+        return;
+      }
+
       await addDoc(collection(db, "availability_slots"), {
         hostId: user.uid,
         hostName: user.displayName || "Utilizator",

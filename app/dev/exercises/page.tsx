@@ -7,7 +7,8 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Exercise, ExerciseCategory, DifficultyLevel } from "@/lib/types/exercise";
+import { Exercise, ExerciseCategory, DifficultyLevel, MuscleGroup, Equipment, MedicalWarning } from "@/lib/types/exercise";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 // Sample data - in production this would come from Firestore
 const sampleExercises: Exercise[] = [
@@ -20,6 +21,7 @@ const sampleExercises: Exercise[] = [
     secondaryMuscles: ["Fese", "Ischiogambieri"],
     equipment: ["Halteră", "Bancă"],
     difficulty: "Intermediate",
+    medicalWarnings: ["spate", "genunchi"],
     instructions: [
       "Stai în picioare cu haltera pe umeri",
       "Păstrează picioarele la lățimea umerilor",
@@ -40,6 +42,7 @@ const sampleExercises: Exercise[] = [
       "Mișcare prea rapidă"
     ],
     videoUrl: "https://www.youtube.com/watch?v=ultWZbUMPL8",
+    videoDuration: 90,
     videoTimestamps: [
       { time: 0, title: "Introducere", description: "Despre exercițiu" },
       { time: 15, title: "Setup", description: "Poziția inițială" },
@@ -274,17 +277,67 @@ const sampleExercises: Exercise[] = [
 // Category type for filters
 type CategoryFilter = 'Toate' | ExerciseCategory;
 
+// Muscle groups with i18n
+const MUSCLE_GROUPS = [
+  { id: 'Cvadricepsi', label: 'Cvadricepsi', labelEn: 'Quadriceps' },
+  { id: 'Fese', label: 'Fese', labelEn: 'Glutes' },
+  { id: 'Ischiogambieri', label: 'Ischiogambieri', labelEn: 'Hamstrings' },
+  { id: 'Piept', label: 'Piept', labelEn: 'Chest' },
+  { id: 'Spate', label: 'Spate', labelEn: 'Back' },
+  { id: 'Umeri', label: 'Umeri', labelEn: 'Shoulders' },
+  { id: 'Biceps', label: 'Biceps', labelEn: 'Biceps' },
+  { id: 'Triceps', label: 'Triceps', labelEn: 'Triceps' },
+  { id: 'Abdomen', label: 'Abdomen', labelEn: 'Abs' },
+  { id: 'Gambiere', label: 'Gambiere', labelEn: 'Calves' },
+];
+
+// Equipment types with i18n
+const EQUIPMENT_TYPES = [
+  { id: 'Niciunul', label: 'Fără Echipament', labelEn: 'No Equipment' },
+  { id: 'Halteră', label: 'Halteră', labelEn: 'Barbell' },
+  { id: 'Gantera', label: 'Gantere', labelEn: 'Dumbbells' },
+  { id: 'Mașină dePresă', label: 'Aparate', labelEn: 'Machines' },
+  { id: 'Greutate corporală', label: 'Greutate Corporală', labelEn: 'Bodyweight' },
+  { id: 'Cablu', label: 'Cablu', labelEn: 'Cable' },
+  { id: 'Elastice', label: 'Elastice', labelEn: 'Resistance Bands' },
+];
+
+// Medical warnings with i18n
+const MEDICAL_WARNINGS: Record<string, { label: string; labelEn: string; color: string }> = {
+  'spate': { label: 'Atenție: Spate', labelEn: 'Warning: Back', color: 'bg-amber-100 text-amber-700' },
+  'genunchi': { label: 'Atenție: Genunchi', labelEn: 'Warning: Knee', color: 'bg-orange-100 text-orange-700' },
+  'umăr': { label: 'Atenție: Umăr', labelEn: 'Warning: Shoulder', color: 'bg-red-100 text-red-700' },
+  'încheietură': { label: 'Atenție: Încheietură', labelEn: 'Warning: Wrist', color: 'bg-yellow-100 text-yellow-700' },
+  'gât': { label: 'Atenție: Gât', labelEn: 'Warning: Neck', color: 'bg-pink-100 text-pink-700' },
+  'cardio': { label: 'Atenție: Cord', labelEn: 'Warning: Heart', color: 'bg-red-100 text-red-700' },
+};
+
 export default function ExercisesPage() {
+  const { language } = useLanguage();
+  const t = (ro: string, en: string) => language === "ro" ? ro : en;
+  
   // State
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('Toate');
+  const [muscleFilter, setMuscleFilter] = useState<string>('Toate');
+  const [equipmentFilter, setEquipmentFilter] = useState<string>('Toate');
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const [hoveredExercise, setHoveredExercise] = useState<string | null>(null);
   
   // Filtered exercises based on search and category
   const filteredExercises = useMemo(() => {
     return sampleExercises.filter(exercise => {
       // Category filter
       const matchesCategory = categoryFilter === 'Toate' || exercise.category === categoryFilter;
+      
+      // Muscle group filter
+      const matchesMuscle = muscleFilter === 'Toate' || 
+        exercise.muscleGroup === muscleFilter ||
+        (exercise.secondaryMuscles && exercise.secondaryMuscles.some(m => m === muscleFilter));
+      
+      // Equipment filter
+      const matchesEquipment = equipmentFilter === 'Toate' ||
+        exercise.equipment.some(eq => eq.toLowerCase().includes(equipmentFilter.toLowerCase()));
       
       // Search filter (name, muscleGroup, tags)
       const searchLower = searchQuery.toLowerCase();
@@ -293,9 +346,9 @@ export default function ExercisesPage() {
         exercise.muscleGroup.toLowerCase().includes(searchLower) ||
         exercise.tags.some(tag => tag.toLowerCase().includes(searchLower));
       
-      return matchesCategory && matchesSearch;
+      return matchesCategory && matchesMuscle && matchesEquipment && matchesSearch;
     });
-  }, [searchQuery, categoryFilter]);
+  }, [searchQuery, categoryFilter, muscleFilter, equipmentFilter]);
   
   // Get badge color based on category
   const getCategoryBadge = (category: ExerciseCategory) => {
@@ -357,21 +410,84 @@ export default function ExercisesPage() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {(['Toate', 'Sala', 'Acasa', 'Stretching'] as CategoryFilter[]).map((category) => (
+      {/* Filter Tabs - Category */}
+      <div className="mb-4">
+        <p className="text-sm font-medium text-zinc-700 mb-2">{t("Categorie", "Category")}</p>
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {(['Toate', 'Sala', 'Acasa', 'Stretching'] as CategoryFilter[]).map((category) => (
+            <button
+              key={category}
+              onClick={() => setCategoryFilter(category)}
+              className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+                categoryFilter === category
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+              }`}
+            >
+              {category === 'Toate' ? t("Toate", "All") : category}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter Tabs - Muscle Group */}
+      <div className="mb-4">
+        <p className="text-sm font-medium text-zinc-700 mb-2">{t("Grupă Musculară", "Muscle Group")}</p>
+        <div className="flex gap-2 overflow-x-auto pb-2">
           <button
-            key={category}
-            onClick={() => setCategoryFilter(category)}
-            className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
-              categoryFilter === category
-                ? 'bg-emerald-600 text-white'
-                : 'bg-zinc-100 bg-slate-50 text-zinc-600 text-slate-500 hover:bg-zinc-200 hover:bg-slate-200'
+            onClick={() => setMuscleFilter('Toate')}
+            className={`px-3 py-1.5 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+              muscleFilter === 'Toate'
+                ? 'bg-blue-600 text-white'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
             }`}
           >
-            {category}
+            {t("Toate", "All")}
           </button>
-        ))}
+          {MUSCLE_GROUPS.map((muscle) => (
+            <button
+              key={muscle.id}
+              onClick={() => setMuscleFilter(muscle.id)}
+              className={`px-3 py-1.5 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+                muscleFilter === muscle.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+              }`}
+            >
+              {language === "ro" ? muscle.label : muscle.labelEn}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter Tabs - Equipment */}
+      <div className="mb-6">
+        <p className="text-sm font-medium text-zinc-700 mb-2">{t("Echipament", "Equipment")}</p>
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          <button
+            onClick={() => setEquipmentFilter('Toate')}
+            className={`px-3 py-1.5 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+              equipmentFilter === 'Toate'
+                ? 'bg-purple-600 text-white'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+            }`}
+          >
+            {t("Toate", "All")}
+          </button>
+          {EQUIPMENT_TYPES.map((eq) => (
+            <button
+              key={eq.id}
+              onClick={() => setEquipmentFilter(eq.id)}
+              className={`px-3 py-1.5 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+                equipmentFilter === eq.id
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+              }`}
+            >
+              {language === "ro" ? eq.label : eq.labelEn}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Results count */}
@@ -385,10 +501,27 @@ export default function ExercisesPage() {
           <button
             key={exercise.id}
             onClick={() => setSelectedExercise(exercise)}
-            className="bg-white bg-slate-50 rounded-xl p-4 border border-zinc-200 border-slate-200 text-left hover:border-emerald-500 hover:border-emerald-500 hover:shadow-md transition-all group"
+            onMouseEnter={() => setHoveredExercise(exercise.id)}
+            onMouseLeave={() => setHoveredExercise(null)}
+            className="relative bg-white rounded-xl p-4 border border-zinc-200 text-left hover:border-emerald-500 hover:shadow-md transition-all group overflow-hidden"
           >
+            {/* Video Preview Overlay on Hover */}
+            {hoveredExercise === exercise.id && (
+              <div className="absolute inset-0 bg-zinc-900/90 flex items-center justify-center z-10 rounded-xl">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center mx-auto mb-2 animate-pulse">
+                    <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                    </svg>
+                  </div>
+                  <p className="text-white text-sm font-medium">{t("Verifică video", "Watch Video")}</p>
+                  <p className="text-zinc-400 text-xs mt-1">{exercise.videoDuration ? `${Math.floor(exercise.videoDuration / 60)}:${String(exercise.videoDuration % 60).padStart(2, '0')}` : "1-2 min"}</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-start justify-between mb-2">
-              <h3 className="font-semibold text-zinc-900 text-slate-900 group-hover:text-emerald-600 group-hover:text-emerald-600">
+              <h3 className="font-semibold text-zinc-900 group-hover:text-emerald-600">
                 {exercise.name}
               </h3>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryBadge(exercise.category)}`}>
@@ -397,15 +530,29 @@ export default function ExercisesPage() {
             </div>
             
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-zinc-500 text-slate-500">
-                {exercise.muscleGroup}
+              <span className="text-sm text-zinc-500">
+                {language === "ro" ? exercise.muscleGroup : MUSCLE_GROUPS.find(m => m.id === exercise.muscleGroup)?.labelEn || exercise.muscleGroup}
               </span>
               {exercise.secondaryMuscles && exercise.secondaryMuscles.length > 0 && (
-                <span className="text-xs text-zinc-400 text-slate-500">
+                <span className="text-xs text-zinc-400">
                   + {exercise.secondaryMuscles.join(', ')}
                 </span>
               )}
             </div>
+            
+            {/* Medical Warnings */}
+            {exercise.medicalWarnings && exercise.medicalWarnings.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {exercise.medicalWarnings.map((warning) => (
+                  <span 
+                    key={warning} 
+                    className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${MEDICAL_WARNINGS[warning]?.color || 'bg-amber-100 text-amber-700'}`}
+                  >
+                    ⚠️ {language === "ro" ? MEDICAL_WARNINGS[warning]?.label : MEDICAL_WARNINGS[warning]?.labelEn}
+                  </span>
+                ))}
+              </div>
+            )}
             
             <div className="mt-3 flex items-center gap-2">
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyBadge(exercise.difficulty)}`}>
@@ -413,7 +560,7 @@ export default function ExercisesPage() {
               </span>
               <div className="flex gap-1 flex-wrap">
                 {exercise.equipment.slice(0, 2).map((eq, i) => (
-                  <span key={i} className="text-xs text-zinc-400 text-slate-500 bg-zinc-100 bg-slate-100 px-2 py-0.5 rounded">
+                  <span key={i} className="text-xs text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded">
                     {eq}
                   </span>
                 ))}

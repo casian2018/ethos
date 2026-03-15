@@ -46,6 +46,15 @@ export type Equipment =
 // Difficulty levels
 export type DifficultyLevel = 'Beginner' | 'Intermediate' | 'Advanced';
 
+// Medical warning tags - for users with specific conditions
+export type MedicalWarning = 
+  | 'spate'        // Back problems - herniated disc, lower back pain
+  | 'genunchi'      // Knee problems - ACL, meniscus
+  | 'umăr'         // Shoulder problems - rotator cuff
+  | 'încheietură'  // Wrist problems
+  | 'gât'          // Neck problems
+  | 'cardio';      // Heart conditions - requires doctor approval
+
 /**
  * Main Exercise Interface
  * Firestore collection: 'exercises'
@@ -63,7 +72,10 @@ export interface Exercise {
   
   // Technical Details
   equipment: Equipment[];         // Required equipment (can have multiple)
-  difficulty: DifficultyLevel;   // Difficulty level
+  difficulty: DifficultyLevel;     // Difficulty level
+  
+  // Medical Warnings - for users with specific conditions
+  medicalWarnings?: MedicalWarning[];  // Conditions this exercise may worsen
   
   // Instructions & Guidance
   instructions: string[];        // Step-by-step instructions (array of strings)

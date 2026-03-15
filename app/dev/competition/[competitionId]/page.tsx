@@ -18,6 +18,8 @@ import {
   arrayRemove
 } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb, storage as firebaseStorage, getUserDisplayName } from "@/lib/firebase";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
+import confetti from "canvas-confetti";
 import { ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
 const auth = firebaseAuth!;
@@ -77,6 +79,7 @@ async function analyzeStepsImage(imageFile: File): Promise<{ steps: number; date
 export default function CompetitionDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const { language } = useLanguage();
   const competitionId = params.competitionId as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -93,6 +96,8 @@ export default function CompetitionDetailPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+  const [highFives, setHighFives] = useState<Record<string, string[]>>({});
+  const [sendingHighFive, setSendingHighFive] = useState<string | null>(null);
 
   const loadCompetition = useCallback(async (uid: string) => {
     try {
@@ -338,6 +343,37 @@ export default function CompetitionDetailPage() {
     const v = n % 100;
     return s[(v - 20) % 10] || s[v] || s[0];
   }
+
+  async function handleHighFive(targetUserId: string) {
+    if (!userId || sendingHighFive) return;
+    setSendingHighFive(targetUserId);
+    
+    try {
+      // Add high five to Firestore
+      await addDoc(collection(db, "high_fives"), {
+        fromUserId: userId,
+        toUserId: targetUserId,
+        competitionId,
+        createdAt: Timestamp.now()
+      });
+      
+      // Trigger confetti!
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ['#10b981', '#f59e0b', '#3b82f6']
+      });
+      
+      setMessage({ type: "success", text: language === "ro" ? "High Five trimis! ✋" : "High Five sent! ✋" });
+    } catch (err) {
+      console.error("Error sending high five:", err);
+    } finally {
+      setSendingHighFive(null);
+    }
+  }
+
+  const t = (ro: string, en: string) => language === "ro" ? ro : en;
 
   if (loading) {
     return (
@@ -606,11 +642,23 @@ export default function CompetitionDetailPage() {
                         
                         {/* Steps */}
                         <div className="text-right">
-                          <p className="font-bold text-zinc-900 text-slate-900">
+                          <p className="font-bold text-zinc-900">
                             {entry.totalSteps.toLocaleString()}
                           </p>
-                          <p className="text-xs text-zinc-500 text-slate-500">steps</p>
+                          <p className="text-xs text-zinc-500">{t("pași", "steps")}</p>
                         </div>
+                        
+                        {/* High Five Button */}
+                        {!isCurrentUser && userId && (
+                          <button
+                            onClick={() => handleHighFive(entry.userId)}
+                            disabled={sendingHighFive === entry.userId}
+                            className="ml-2 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-full text-sm font-medium transition-colors flex items-center gap-1"
+                            title={t("Dă High Five!", "Give High Five!")}
+                          >
+                            ✋
+                          </button>
+                        )}
                       </div>
                     );
                   })}

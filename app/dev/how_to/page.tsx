@@ -8,6 +8,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Exercise, ExerciseCategory, DifficultyLevel } from "@/lib/types/exercise";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 // Sample data - in production this would come from Firestore
 const sampleExercises: Exercise[] = [
@@ -274,7 +275,9 @@ const sampleExercises: Exercise[] = [
 // Category type for filters
 type CategoryFilter = 'Toate' | ExerciseCategory;
 
-export default function ExercisesPage() {
+export default function HowToPage() {
+  const { language } = useLanguage();
+  const t = (ro: string, en: string) => language === "ro" ? ro : en;
   // State
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('Toate');
@@ -554,18 +557,43 @@ export default function ExercisesPage() {
                 </div>
               </div>
 
-              {/* Instructions */}
-              <div>
-                <h3 className="font-medium text-zinc-900 text-slate-900 mb-3">
-                  📝 Explicație Pas cu Pas
+              {/* Recipe Format: Setup, Execuție, Greșeli Comune */}
+              
+              {/* 📋 SETUP - Prepararea */}
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                  <span className="text-xl">📋</span> 
+                  {language === "ro" ? "SETUP - Prepararea" : "SETUP - Preparation"}
                 </h3>
-                <ol className="space-y-2">
+                <ul className="space-y-2">
+                  <li className="flex gap-2 items-start">
+                    <span className="text-blue-600 mt-1">1.</span>
+                    <span className="text-blue-900">{t("Pregătește echipamentul necesar", "Prepare the necessary equipment")}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="text-blue-600 mt-1">2.</span>
+                    <span className="text-blue-900">{t("Asigură-te că ai spațiu suficient", "Make sure you have enough space")}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="text-blue-600 mt-1">3.</span>
+                    <span className="text-blue-900">{t("Încălzește-te 5-10 minute", "Warm up for 5-10 minutes")}</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* 🏃 EXECUȚIE - Executarea */}
+              <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                <h3 className="font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                  <span className="text-xl">🏃</span>
+                  {language === "ro" ? "EXECUȚIE - Executarea" : "EXECUTION - Performing"}
+                </h3>
+                <ol className="space-y-3">
                   {selectedExercise.instructions.map((step, i) => (
                     <li key={i} className="flex gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-100 bg-emerald-100 text-emerald-600 text-emerald-600 rounded-full flex items-center justify-center text-sm font-medium">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
                         {i + 1}
                       </span>
-                      <span className="text-zinc-600 text-slate-600">
+                      <span className="text-emerald-900">
                         {step}
                       </span>
                     </li>
@@ -573,34 +601,18 @@ export default function ExercisesPage() {
                 </ol>
               </div>
 
-              {/* Tips */}
-              <div>
-                <h3 className="font-medium text-emerald-700 text-emerald-600 mb-3">
-                  ✨ Tips & Tricks
-                </h3>
-                <ul className="space-y-2">
-                  {selectedExercise.tips.map((tip, i) => (
-                    <li key={i} className="flex gap-2 items-start">
-                      <span className="text-emerald-500 mt-1">✓</span>
-                      <span className="text-zinc-600 text-slate-600">
-                        {tip}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Mistakes */}
+              {/* ⚠️ GREȘELI COMUNE */}
               {selectedExercise.mistakes && selectedExercise.mistakes.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-red-600 text-red-600 mb-3">
-                    ⚠️ Greșeli Comune de Evitat
+                <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+                  <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+                    <span className="text-xl">⚠️</span>
+                    {language === "ro" ? "GREȘELI COMUNE - Ce să eviți" : "COMMON MISTAKES - What to avoid"}
                   </h3>
                   <ul className="space-y-2">
                     {selectedExercise.mistakes.map((mistake, i) => (
                       <li key={i} className="flex gap-2 items-start">
                         <span className="text-red-500 mt-1">✗</span>
-                        <span className="text-zinc-600 text-slate-600">
+                        <span className="text-red-900">
                           {mistake}
                         </span>
                       </li>
@@ -608,6 +620,24 @@ export default function ExercisesPage() {
                   </ul>
                 </div>
               )}
+
+              {/* ✨ SFATURI */}
+              <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                  <span className="text-xl">✨</span>
+                  {language === "ro" ? "SFATURI PRO" : "PRO TIPS"}
+                </h3>
+                <ul className="space-y-2">
+                  {selectedExercise.tips.map((tip, i) => (
+                    <li key={i} className="flex gap-2 items-start">
+                      <span className="text-amber-500 mt-1">✓</span>
+                      <span className="text-amber-900">
+                        {tip}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               {/* Tags */}
               <div>

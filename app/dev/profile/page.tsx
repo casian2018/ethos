@@ -8,13 +8,14 @@ import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
 import ScheduledWorkoutsSection from "@/components/ScheduledWorkoutsSection";
 
-const auth = firebaseAuth!;
-const db = firebaseDb!;
+const auth = firebaseAuth;
+const db = firebaseDb;
 
 interface UserProfileData {
   age: number;
   birthDate?: string;
   gender?: string;
+  sex?: string;
   city: string;
   education: string;
   occupation: string;
@@ -34,6 +35,29 @@ interface UserProfileData {
 const fitnessLevels = ["beginner", "intermediate", "advanced"] as const;
 const goalOptions = ["lose fat", "gain muscle", "endurance"] as const;
 
+// Medical condition options for editing
+const medicalConditionOptions = [
+  { value: "none", emoji: "✅", labelRo: "Niciuna", labelEn: "None" },
+  { value: "obesity", emoji: "⚖️", labelRo: "Obezitate", labelEn: "Obesity" },
+  { value: "anorexia", emoji: "🍽️", labelRo: "Anorexie", labelEn: "Anorexia" },
+  { value: "anemia", emoji: "🩸", labelRo: "Anemie", labelEn: "Anemia" },
+  { value: "joint-problems", emoji: "🦴", labelRo: "Probleme articulare", labelEn: "Joint Problems" },
+  { value: "hypertension", emoji: "❤️", labelRo: "Hipertensiune", labelEn: "Hypertension" },
+  { value: "diabetes", emoji: "💉", labelRo: "Diabet", labelEn: "Diabetes" },
+  { value: "back-pain", emoji: "🪑", labelRo: "Dureri de spate", labelEn: "Back Pain" },
+  { value: "heart-condition", emoji: "❤️‍🩹", labelRo: "Probleme cardiace", labelEn: "Heart Condition" },
+  { value: "asthma", emoji: "😮‍💨", labelRo: "Astm", labelEn: "Asthma" },
+  { value: "thyroid", emoji: "🔄", labelRo: "Tiroidă", labelEn: "Thyroid" },
+  { value: "kidney-problems", emoji: "🫘", labelRo: "Probleme renale", labelEn: "Kidney Problems" },
+];
+
+// Sex options
+const sexOptions = [
+  { value: "male", emoji: "👨", labelRo: "Masculin", labelEn: "Male" },
+  { value: "female", emoji: "👩", labelRo: "Feminin", labelEn: "Female" },
+  { value: "intersex", emoji: "⚥", labelRo: "Intersex", labelEn: "Intersex" },
+];
+
 export default function ProfilePage() {
   const router = useRouter();
   const { t, language } = useLanguage();
@@ -48,6 +72,7 @@ export default function ProfilePage() {
     age: 0,
     birthDate: "",
     gender: "",
+    sex: "",
     city: "",
     education: "",
     occupation: "",
@@ -67,6 +92,12 @@ export default function ProfilePage() {
   const [hobbyInput, setHobbyInput] = useState("");
 
   useEffect(() => {
+    if (!auth || !db) {
+      setError(language === "ro" ? "Configurație Firebase lipsă. Contactează administratorul." : "Firebase configuration missing. Contact administrator.");
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         router.push("/auth");
@@ -87,6 +118,7 @@ export default function ProfilePage() {
           age: data.age || 0,
           birthDate: data.birthDate || "",
           gender: data.gender || "",
+          sex: data.sex || "",
           city: data.city || "",
           education: data.education || "",
           occupation: data.occupation || "",
@@ -107,8 +139,10 @@ export default function ProfilePage() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [router]);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [router, auth, db, language]);
 
   function handleInputChange(field: keyof UserProfileData, value: string | number | boolean) {
     setProfile(prev => ({ ...prev, [field]: value }));
@@ -140,27 +174,72 @@ export default function ProfilePage() {
     }));
   }
 
+  function handleMedicalConditionToggle(condition: string) {
+    setProfile(prev => {
+      let newConditions: string[];
+      
+      if (condition === "none") {
+        // If selecting "none", clear all other conditions
+        newConditions = ["none"];
+      } else {
+        // Remove "none" if selecting any other condition
+        const withoutNone = prev.medicalConditions.filter(c => c !== "none");
+        
+        if (withoutNone.includes(condition)) {
+          newConditions = withoutNone.filter(c => c !== condition);
+        } else {
+          newConditions = [...withoutNone, condition];
+        }
+        
+        // If no conditions selected, default to none
+        if (newConditions.length === 0) {
+          newConditions = ["none"];
+        }
+      }
+      
+      return { ...prev, medicalConditions: newConditions };
+    });
+  }
+
   async function handleSave() {
-    if (!userId) return;
+    if (!userId || !auth || !db) {
+      setError("Authentication error. Please refresh and try again.");
+      return;
+    }
     
     setSaving(true);
     setError("");
     setSuccess("");
 
     try {
+      // Calculate age from birthDate if provided
+      let age = profile.age;
+      if (profile.birthDate) {
+        const birthYear = new Date(profile.birthDate).getFullYear();
+        const currentYear = new Date().getFullYear();
+        age = currentYear - birthYear;
+      }
+
+      // Calculate BMI
+      const bmi = profile.height > 0 && profile.weight > 0 
+        ? Math.round((profile.weight / ((profile.height / 100) ** 2)) * 10) / 10 
+        : 0;
+
       await updateDoc(doc(db, "users", userId), {
         ...profile,
+        age,
+        bmi,
         updatedAt: new Date(),
       });
 
-      setSuccess("Profile updated successfully!");
+      setSuccess(language === "ro" ? "Profil actualizat cu succes!" : "Profile updated successfully!");
       setIsEditing(false);
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Error updating profile:", err);
-      setError("Failed to update profile. Please try again.");
+      setError(language === "ro" ? "Eroare la actualizarea profilului. Încearcă din nou." : "Failed to update profile. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -222,7 +301,7 @@ export default function ProfilePage() {
         {/* Profile Card */}
         <div className="card p-6 sm:p-8 space-y-8 bg-white">
           {/* Informații Vitale Section */}
-          {(profile.birthDate || profile.gender || profile.medicalConditions.length > 0) && (
+          {(profile.birthDate || profile.gender || profile.sex || profile.medicalConditions.length > 0) && (
             <div>
               <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                 <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,6 +309,70 @@ export default function ProfilePage() {
                 </svg>
                 {language === "ro" ? "Informații Vitale" : "Vital Information"}
               </h2>
+              
+              {/* Sex Selection in Edit Mode */}
+              {isEditing && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {language === "ro" ? "Sex biologic" : "Biological Sex"}
+                  </label>
+                  <div className="flex gap-2">
+                    {sexOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleInputChange("sex", option.value)}
+                        className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium capitalize transition-all flex items-center justify-center gap-2 ${
+                          profile.sex === option.value
+                            ? "bg-emerald-600 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        <span>{option.emoji}</span>
+                        <span>{language === "ro" ? option.labelRo : option.labelEn}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Medical Conditions in Edit Mode */}
+              {isEditing && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {language === "ro" ? "Condiții Medicale" : "Medical Conditions"}
+                    <span className="text-xs text-slate-500 ml-2">
+                      ({language === "ro" ? "Selectează toate care te privesc" : "Select all that apply"})
+                    </span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {medicalConditionOptions.map((condition) => {
+                      const isSelected = profile.medicalConditions.includes(condition.value);
+                      return (
+                        <button
+                          key={condition.value}
+                          type="button"
+                          onClick={() => handleMedicalConditionToggle(condition.value)}
+                          className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all flex items-center gap-2 ${
+                            isSelected
+                              ? "bg-amber-100 text-amber-800 border-2 border-amber-300"
+                              : "bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-slate-100"
+                          }`}
+                        >
+                          <span>{condition.emoji}</span>
+                          <span className="text-xs">{language === "ro" ? condition.labelRo : condition.labelEn}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    💡 {language === "ro" 
+                      ? "Aceste informații ajută AI-ul Ethos să personalizeze antrenamentele pentru tine." 
+                      : "This information helps Ethos AI personalize workouts for you."}
+                  </p>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* Age */}
                 {profile.age > 0 && (
@@ -274,6 +417,18 @@ export default function ProfilePage() {
                     {profile.gender === "female" && "👩 Feminin"}
                     {profile.gender === "non-binary" && "🧑 Non-binar"}
                     {profile.gender === "prefer-not-to-say" && "🤐 Prefer să nu spun"}
+                  </span>
+                </div>
+              )}
+              
+              {/* Sex Badge */}
+              {profile.sex && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-sm text-slate-500">{language === "ro" ? "Sex:" : "Sex:"}</span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium">
+                    {profile.sex === "male" && "👨 Masculin"}
+                    {profile.sex === "female" && "👩 Feminin"}
+                    {profile.sex === "intersex" && "⚥ Intersex"}
                   </span>
                 </div>
               )}

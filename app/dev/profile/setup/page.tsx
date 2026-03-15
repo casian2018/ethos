@@ -37,6 +37,7 @@ type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 interface UserProfileData {
   birthDate: string;
   gender: string;
+  sex: string;
   height: string;
   weight: string;
   fitnessLevel: string;
@@ -48,7 +49,14 @@ interface UserProfileData {
   workoutDuration: number;
 }
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
+
+// Sex options for biological sex
+const sexOptions = [
+  { value: "male", emoji: "👨", labelRo: "Masculin", labelEn: "Male" },
+  { value: "female", emoji: "👩", labelRo: "Feminin", labelEn: "Female" },
+  { value: "intersex", emoji: "⚥", labelRo: "Intersex", labelEn: "Intersex" },
+];
 
 // Gender options with visual cards
 const genderOptions = [
@@ -143,6 +151,7 @@ export default function ProfileSetupPage() {
   const [formData, setFormData] = useState<UserProfileData>({
     birthDate: "",
     gender: "",
+    sex: "",
     height: "",
     weight: "",
     fitnessLevel: "",

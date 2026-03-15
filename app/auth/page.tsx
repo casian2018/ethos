@@ -1,13 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth as firebaseAuth } from "@/lib/firebase";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth as firebaseAuth, db as firebaseDb } from "@/lib/firebase";
 import { useLanguage } from "@/components/LanguageContext";
 
 const auth = firebaseAuth!;
+const db = firebaseDb!;
 const googleProvider = new GoogleAuthProvider();
+
+// Helper to check if user has a profile
+async function userHasProfile(userId: string): Promise<boolean> {
+  if (!db) return false;
+  try {
+    const userDoc = await getDoc(doc(db, "users", userId));
+    return userDoc.exists();
+  } catch {
+    return false;
+  }
+}
+
+// Determine where to redirect after auth
+async function getRedirectPath(userId: string): Promise<string> {
+  const hasProfile = await userHasProfile(userId);
+  if (!hasProfile) {
+    return "/dev/profile/setup";
+  }
+  return "/dev/main";
+}
 
 export default function AuthPage() {
   const router = useRouter();
@@ -24,12 +46,16 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
+      let userCredential;
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
       }
-      router.push("/dev/main");
+      
+      // Check if user has profile and redirect accordingly
+      const redirectPath = await getRedirectPath(userCredential.user.uid);
+      router.push(redirectPath);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
@@ -43,8 +69,11 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      await signInWithPopup(auth, googleProvider);
-      router.push("/dev/profile");
+      const result = await signInWithPopup(auth, googleProvider);
+      
+      // Check if user has profile and redirect accordingly
+      const redirectPath = await getRedirectPath(result.user.uid);
+      router.push(redirectPath);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
